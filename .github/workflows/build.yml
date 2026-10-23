@@ -1,0 +1,50 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build
+        run: cmake --build build --config Release -- -quiet
+
+      - name: Run DSP tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Sign for local use
+        run: |
+          cd build/Vocoder_artefacts/Release
+          codesign --force --deep -s - AU/Vocoder.component
+          codesign --force --deep -s - VST3/Vocoder.vst3
+          codesign --force --deep -s - Standalone/Vocoder.app
+
+      - name: Validate the Audio Unit (what Logic checks)
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R build/Vocoder_artefacts/Release/AU/Vocoder.component ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar || true
+          sleep 5
+          auval -v aumf Vcdr Cblk
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          cd build/Vocoder_artefacts/Release
+          ditto -c -k --keepParent AU/Vocoder.component ../../../dist/Vocoder-AU.zip
+          ditto -c -k --keepParent VST3/Vocoder.vst3 ../../../dist/Vocoder-VST3.zip
+          ditto -c -k --keepParent Standalone/Vocoder.app ../../../dist/Vocoder-App.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Vocoder-mac
+          path: dist/*.zip
