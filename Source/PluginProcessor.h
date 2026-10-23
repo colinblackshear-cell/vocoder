@@ -1,6 +1,9 @@
 #pragma once
 
+#include "dsp/Arpeggiator.h"
 #include "dsp/CarrierSynth.h"
+#include "dsp/Effects.h"
+#include "dsp/Filter.h"
 #include "dsp/Vocoder.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -37,13 +40,35 @@ public:
     juce::AudioProcessorValueTreeState params;
 
 private:
-    void updateSettings();
+    struct Timing
+    {
+        double bpm = 120.0;
+        double ppq = 0.0;
+        bool hostPlaying = false;
+    };
+
+    Timing readTiming();
+    void updateSettings (const Timing& timing);
     void handleMidi (const juce::MidiMessage& message);
+
+    double sampleRate = 44100.0;
 
     vox::Vocoder vocoder;
     vox::CarrierSynth synth;
+    vox::Arpeggiator arp;
     vox::NoiseGate gate;
-    juce::SmoothedValue<float> inputGain, outputGain, mix;
+
+    vox::StateVariableFilter filter;
+    vox::Lfo lfo;
+    vox::EnvelopeFollower voiceLevel;
+    vox::Distortion distortion;
+    vox::Chorus chorus;
+    vox::StereoDelay delay;
+    juce::Reverb reverb;
+
+    juce::SmoothedValue<float> inputGain, outputGain, mix, resonance;
+    juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> cutoff;
+    float filterDrive = 0.0f, voiceFollow = 0.0f, lfoDepth = 0.0f, reverbMix = 0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VocoderProcessor)
 };

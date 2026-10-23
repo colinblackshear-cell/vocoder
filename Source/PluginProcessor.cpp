@@ -7,6 +7,11 @@ float raw (const juce::AudioProcessorValueTreeState& params, const char* id)
 {
     return params.getRawParameterValue (id)->load();
 }
+
+int index (const juce::AudioProcessorValueTreeState& params, const char* id)
+{
+    return (int) raw (params, id);
+}
 } // namespace
 
 VocoderProcessor::VocoderProcessor()
@@ -32,25 +37,58 @@ bool VocoderProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
     return side.isDisabled() || side == juce::AudioChannelSet::mono() || side == juce::AudioChannelSet::stereo();
 }
 
-void VocoderProcessor::prepareToPlay (double sampleRate, int)
+void VocoderProcessor::prepareToPlay (double newSampleRate, int)
 {
+    sampleRate = newSampleRate;
     vocoder.prepare (sampleRate);
     synth.prepare (sampleRate);
+    arp.prepare (sampleRate);
     gate.prepare (sampleRate);
+    filter.prepare (sampleRate);
+    voiceLevel.setTimes (sampleRate, 5.0, 150.0);
+    voiceLevel.reset();
+    chorus.prepare (sampleRate);
+    delay.prepare (sampleRate);
+    reverb.setSampleRate (sampleRate);
+    reverb.reset();
 
-    for (auto* smoothed : { &inputGain, &outputGain, &mix })
-        smoothed->reset (sampleRate, 0.02);
+    inputGain.reset (sampleRate, 0.02);
+    outputGain.reset (sampleRate, 0.02);
+    mix.reset (sampleRate, 0.02);
+    resonance.reset (sampleRate, 0.02);
+    cutoff.reset (sampleRate, 0.02);
 
-    updateSettings();
+    updateSettings (readTiming());
     inputGain.setCurrentAndTargetValue (inputGain.getTargetValue());
     outputGain.setCurrentAndTargetValue (outputGain.getTargetValue());
     mix.setCurrentAndTargetValue (mix.getTargetValue());
+    resonance.setCurrentAndTargetValue (resonance.getTargetValue());
+    cutoff.setCurrentAndTargetValue (cutoff.getTargetValue());
 }
 
-void VocoderProcessor::updateSettings()
+VocoderProcessor::Timing VocoderProcessor::readTiming()
+{
+    Timing t;
+    t.bpm = raw (params, ParamIDs::tempo);
+
+    if (auto* head = getPlayHead())
+        if (auto position = head->getPosition())
+        {
+            if (auto bpm = position->getBpm(); bpm && *bpm > 0.0)
+                t.bpm = *bpm;
+            if (auto ppq = position->getPpqPosition(); ppq && position->getIsPlaying())
+            {
+                t.ppq = *ppq;
+                t.hostPlaying = true;
+            }
+        }
+    return t;
+}
+
+void VocoderProcessor::updateSettings (const Timing& timing)
 {
     vox::Vocoder::Settings vs;
-    vs.bands = (int) raw (params, ParamIDs::bands);
+    vs.bands = index (params, ParamIDs::bands);
     vs.sharpness = raw (params, ParamIDs::sharpness);
     vs.attackMs = raw (params, ParamIDs::attack);
     vs.releaseMs = raw (params, ParamIDs::release);
@@ -59,15 +97,67 @@ void VocoderProcessor::updateSettings()
     vocoder.setSettings (vs);
 
     vox::CarrierSynth::Settings cs;
-    cs.waveform = (vox::Waveform) (int) raw (params, ParamIDs::waveform);
-    cs.octave = (int) raw (params, ParamIDs::octave);
+    cs.waveform = (vox::Waveform) index (params, ParamIDs::waveform);
+    cs.octave = index (params, ParamIDs::octave);
     cs.detuneCents = raw (params, ParamIDs::detune);
     cs.noise = raw (params, ParamIDs::noise);
     cs.attackMs = raw (params, ParamIDs::carrierAttack);
     cs.releaseMs = raw (params, ParamIDs::carrierRelease);
     cs.drone = raw (params, ParamIDs::drone) > 0.5f;
-    cs.droneNote = (int) raw (params, ParamIDs::droneNote);
+    cs.droneNote = index (params, ParamIDs::droneNote);
     synth.setSettings (cs);
+
+    const double beatsPerSample = timing.bpm / 60.0 / sampleRate;
+
+    vox::Arpeggiator::Settings as;
+    as.mode = (vox::ArpMode) index (params, ParamIDs::arpMode);
+    as.pattern = (vox::ArpPattern) index (params, ParamIDs::arpPattern);
+    as.octaves = index (params, ParamIDs::arpOctaves);
+    as.gate = raw (params, ParamIDs::arpGate);
+    as.swing = raw (params, ParamIDs::arpSwing);
+    as.gatePattern = index (params, ParamIDs::gatePattern);
+    arp.setSettings (as, synth);
+
+    const double stepBeats = NoteLengths::arpBeats[juce::jlimit (0, 5, index (params, ParamIDs::arpRate))];
+    arp.setIncrement (beatsPerSample / stepBeats);
+    if (timing.hostPlaying)
+        arp.syncTo (timing.ppq / stepBeats);
+
+    filter.setMode ((vox::FilterMode) index (params, ParamIDs::filterMode));
+    cutoff.setTargetValue (raw (params, ParamIDs::cutoff));
+    resonance.setTargetValue (raw (params, ParamIDs::resonance));
+    filterDrive = raw (params, ParamIDs::filterDrive);
+    voiceFollow = raw (params, ParamIDs::voiceFollow);
+    lfoDepth = raw (params, ParamIDs::lfoDepth);
+
+    lfo.setShape ((vox::LfoShape) index (params, ParamIDs::lfoShape));
+    const double lfoBeats = NoteLengths::lfoBeats[juce::jlimit (0, 7, index (params, ParamIDs::lfoSync))];
+    if (lfoBeats > 0.0)
+    {
+        lfo.setIncrement (beatsPerSample / lfoBeats);
+        if (timing.hostPlaying)
+            lfo.syncTo (timing.ppq / lfoBeats);
+    }
+    else
+    {
+        lfo.setIncrement (raw (params, ParamIDs::lfoRate) / sampleRate);
+    }
+
+    distortion.set (raw (params, ParamIDs::drive), raw (params, ParamIDs::crush));
+    chorus.set (raw (params, ParamIDs::chorusRate), raw (params, ParamIDs::chorusDepth), raw (params, ParamIDs::chorusMix));
+
+    const double delayBeats = NoteLengths::delayBeats[juce::jlimit (0, 5, index (params, ParamIDs::delayTime))];
+    delay.set (delayBeats * 60.0 / timing.bpm, raw (params, ParamIDs::delayFeedback), raw (params, ParamIDs::delayMix),
+               raw (params, ParamIDs::delayPingPong) > 0.5f);
+
+    reverbMix = raw (params, ParamIDs::reverbMix);
+    juce::Reverb::Parameters rp;
+    rp.roomSize = raw (params, ParamIDs::reverbSize);
+    rp.damping = raw (params, ParamIDs::reverbDamping);
+    rp.wetLevel = reverbMix * 0.6f;
+    rp.dryLevel = 1.0f - reverbMix * 0.5f;
+    rp.width = 1.0f;
+    reverb.setParameters (rp);
 
     gate.setThresholdDb (raw (params, ParamIDs::gateThreshold));
     inputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (params, ParamIDs::inputGain)));
@@ -78,17 +168,17 @@ void VocoderProcessor::updateSettings()
 void VocoderProcessor::handleMidi (const juce::MidiMessage& message)
 {
     if (message.isNoteOn())
-        synth.noteOn (message.getNoteNumber(), message.getFloatVelocity());
+        arp.noteOn (message.getNoteNumber(), message.getFloatVelocity(), synth);
     else if (message.isNoteOff())
-        synth.noteOff (message.getNoteNumber());
+        arp.noteOff (message.getNoteNumber(), synth);
     else if (message.isAllNotesOff() || message.isAllSoundOff())
-        synth.allNotesOff();
+        arp.allNotesOff (synth);
 }
 
 void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
-    updateSettings();
+    updateSettings (readTiming());
 
     // In Logic the voice usually arrives on the sidechain; standalone it is the main input.
     // Summing both covers every setup, since the unused one is silent.
@@ -103,6 +193,7 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     const int sideChannels = sideIn.getNumChannels();
     const float mainScale = mainChannels > 0 ? 1.0f / (float) mainChannels : 0.0f;
     const float sideScale = sideChannels > 0 ? 1.0f / (float) sideChannels : 0.0f;
+    const bool stereoOut = out.getNumChannels() > 1;
 
     auto nextEvent = midi.begin();
 
@@ -118,12 +209,35 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             voice += sideIn.getSample (ch, i) * sideScale;
 
         voice = gate.process (voice * inputGain.getNextValue());
-        const float wet = vocoder.process (voice, synth.process());
-        const float m = mix.getNextValue();
-        const float sample = std::tanh ((wet * m + voice * (1.0f - m)) * outputGain.getNextValue());
 
-        for (int ch = 0; ch < out.getNumChannels(); ++ch)
-            out.setSample (ch, i, sample);
+        // Vocoder, then the rhythm gate, then the filter.
+        const float arpGain = arp.process (synth);
+        float wet = vocoder.process (voice, synth.process()) * arpGain;
+
+        const float follow = std::min (1.0f, voiceLevel.process (voice) * 4.0f);
+        const float octaves = lfo.process() * lfoDepth + follow * voiceFollow;
+        filter.setCutoff (cutoff.getNextValue() * std::exp2 (octaves), resonance.getNextValue());
+        if (filterDrive > 0.0f)
+            wet = std::tanh (wet * (1.0f + filterDrive * 6.0f)) / (1.0f + filterDrive * 2.0f);
+        wet = filter.process (wet);
+
+        wet = distortion.process (wet);
+
+        // Stereo from here on.
+        float left = wet, right = wet;
+        chorus.process (left, right);
+        delay.process (left, right);
+        if (reverbMix > 0.0f)
+            reverb.processStereo (&left, &right, 1);
+
+        const float m = mix.getNextValue();
+        const float gain = outputGain.getNextValue();
+        left = std::tanh ((left * m + voice * (1.0f - m)) * gain);
+        right = std::tanh ((right * m + voice * (1.0f - m)) * gain);
+
+        out.setSample (0, i, stereoOut ? left : 0.5f * (left + right));
+        if (stereoOut)
+            out.setSample (1, i, right);
     }
 
     for (; nextEvent != midi.end(); ++nextEvent)

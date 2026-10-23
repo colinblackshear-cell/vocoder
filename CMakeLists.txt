@@ -61,3 +61,17 @@ target_link_libraries(Vocoder
         juce::juce_recommended_config_flags
         juce::juce_recommended_lto_flags
         juce::juce_recommended_warning_flags)
+
+# Whole-plugin smoke test (needs JUCE).
+juce_add_console_app(PluginSmokeTest PRODUCT_NAME "PluginSmokeTest")
+target_sources(PluginSmokeTest PRIVATE tests/PluginSmokeTest.cpp Source/PluginProcessor.cpp)
+target_compile_definitions(PluginSmokeTest PRIVATE
+    JucePlugin_Name="Vocoder"
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0)
+target_link_libraries(PluginSmokeTest PRIVATE
+    juce::juce_audio_utils
+    juce::juce_dsp
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags)
+add_test(NAME plugin_smoke COMMAND PluginSmokeTest)
