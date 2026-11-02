@@ -46,7 +46,7 @@ juce_add_plugin(Vocoder
     AU_MAIN_TYPE kAudioUnitType_MusicEffect
     COPY_PLUGIN_AFTER_BUILD FALSE)
 
-target_sources(Vocoder PRIVATE Source/PluginProcessor.cpp)
+target_sources(Vocoder PRIVATE Source/PluginProcessor.cpp Source/PluginEditor.cpp)
 
 target_compile_definitions(Vocoder PUBLIC
     JUCE_WEB_BROWSER=0
@@ -64,7 +64,7 @@ target_link_libraries(Vocoder
 
 # Whole-plugin smoke test (needs JUCE).
 juce_add_console_app(PluginSmokeTest PRODUCT_NAME "PluginSmokeTest")
-target_sources(PluginSmokeTest PRIVATE tests/PluginSmokeTest.cpp Source/PluginProcessor.cpp)
+target_sources(PluginSmokeTest PRIVATE tests/PluginSmokeTest.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
 target_compile_definitions(PluginSmokeTest PRIVATE
     JucePlugin_Name="Vocoder"
     JUCE_WEB_BROWSER=0

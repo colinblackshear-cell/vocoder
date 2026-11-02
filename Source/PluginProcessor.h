@@ -5,8 +5,9 @@
 #include "dsp/Effects.h"
 #include "dsp/Filter.h"
 #include "dsp/Vocoder.h"
+#include "Recorder.h"
 
-#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_audio_utils/juce_audio_utils.h>
 
 class VocoderProcessor : public juce::AudioProcessor
 {
@@ -38,6 +39,8 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
 
     juce::AudioProcessorValueTreeState params;
+    juce::MidiKeyboardState keyboardState; // the on-screen keyboard
+    Recorder recorder;
 
 private:
     struct Timing

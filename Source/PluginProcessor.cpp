@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "Parameters.h"
+#include "PluginEditor.h"
 
 namespace
 {
@@ -179,6 +180,7 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 {
     juce::ScopedNoDenormals noDenormals;
     updateSettings (readTiming());
+    keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
 
     // In Logic the voice usually arrives on the sidechain; standalone it is the main input.
     // Summing both covers every setup, since the unused one is silent.
@@ -244,11 +246,12 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         handleMidi ((*nextEvent).getMessage());
 
     midi.clear();
+    recorder.write (out.getArrayOfReadPointers(), numSamples);
 }
 
 juce::AudioProcessorEditor* VocoderProcessor::createEditor()
 {
-    return new juce::GenericAudioProcessorEditor (*this);
+    return new VocoderEditor (*this);
 }
 
 void VocoderProcessor::getStateInformation (juce::MemoryBlock& destData)
