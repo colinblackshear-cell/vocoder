@@ -106,6 +106,18 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     cs.releaseMs = raw (params, ParamIDs::carrierRelease);
     cs.drone = raw (params, ParamIDs::drone) > 0.5f;
     cs.droneNote = index (params, ParamIDs::droneNote);
+    cs.pulseWidth = raw (params, ParamIDs::pulseWidth);
+    cs.pwmDepth = raw (params, ParamIDs::pwmDepth);
+    static constexpr vox::Waveform osc2Waves[] = { vox::Waveform::saw, vox::Waveform::square, vox::Waveform::pulse,
+                                                   vox::Waveform::triangle };
+    cs.osc2Wave = osc2Waves[juce::jlimit (0, 3, index (params, ParamIDs::osc2Wave))];
+    cs.osc2Semitones = raw (params, ParamIDs::osc2Semitones);
+    cs.osc2FineCents = raw (params, ParamIDs::osc2Fine);
+    cs.osc2Level = raw (params, ParamIDs::osc2Level);
+    cs.subLevel = raw (params, ParamIDs::subLevel);
+    cs.glideMs = raw (params, ParamIDs::glide);
+    cs.vibratoHz = raw (params, ParamIDs::vibratoRate);
+    cs.vibratoCents = raw (params, ParamIDs::vibratoDepth);
     synth.setSettings (cs);
 
     const double beatsPerSample = timing.bpm / 60.0 / sampleRate;
