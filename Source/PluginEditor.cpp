@@ -8,6 +8,7 @@ constexpr int liveBarHeight = 76;
 constexpr int keyboardHeight = 90;
 constexpr int keyboardToolsHeight = 28;
 constexpr int chordPadHeight = 36;
+constexpr int numWhiteKeys = 36; // C2 to C7
 const auto background = juce::Colour (0xff1d1f24);
 const auto recordRed = juce::Colour (0xffd23c3c);
 } // namespace
@@ -413,14 +414,41 @@ void VocoderEditor::setOctave (int octave)
 
 void VocoderEditor::parentHierarchyChanged()
 {
-    if (liveBar != nullptr && isShowing())
+    if (liveBar != nullptr)
+        focusForComputerKeys (10);
+}
+
+void VocoderEditor::focusForComputerKeys (int attemptsLeft)
+{
+    // The window isn't on screen yet when the editor is created, so keep
+    // trying briefly until it is and the computer keys reach the keyboard.
+    if (isShowing())
         grabKeyboardFocus();
+
+    if (! hasKeyboardFocus (true) && attemptsLeft > 0)
+        juce::Timer::callAfterDelay (200, [safe = juce::Component::SafePointer<VocoderEditor> (this), attemptsLeft]
+        {
+            if (safe != nullptr)
+                safe->focusForComputerKeys (attemptsLeft - 1);
+        });
 }
 
 bool VocoderEditor::keyStateChanged (bool isKeyDown)
 {
     // Keys typed anywhere in the window play the on-screen keyboard.
     return liveBar != nullptr && keyboard.keyStateChanged (isKeyDown);
+}
+
+bool VocoderEditor::keyPressed (const juce::KeyPress& key)
+{
+    // Claim the note keys. Unclaimed keys make macOS play its alert sound,
+    // which repeats for as long as a key is held.
+    const auto mods = key.getModifiers();
+    if (liveBar == nullptr || mods.isCommandDown() || mods.isCtrlDown() || mods.isAltDown())
+        return false;
+
+    const auto c = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
+    return c != 0 && juce::String ("awsedftgyhujkolp;").containsChar (c);
 }
 
 void VocoderEditor::paint (juce::Graphics& g)
@@ -435,6 +463,7 @@ void VocoderEditor::resized()
         liveBar->setBounds (area.removeFromTop (liveBarHeight));
 
     keyboard.setBounds (area.removeFromBottom (keyboardHeight));
+    keyboard.setKeyWidth ((float) keyboard.getWidth() / numWhiteKeys);
     chordPad.setBounds (area.removeFromBottom (chordPadHeight));
     auto tools = area.removeFromBottom (keyboardToolsHeight).reduced (8, 3);
     octaveDown.setBounds (tools.removeFromLeft (52));
