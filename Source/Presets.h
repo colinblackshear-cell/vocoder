@@ -7,7 +7,7 @@
 
 // Factory sounds. Each preset starts from the default settings and changes
 // only what it lists (values in the parameter's own units; choices by index).
-// Performance settings such as input gain, gate, tempo and the drone are left
+// Performance settings such as input gain, gate, tempo, key and the drone are left
 // alone, so switching sounds mid-set never changes your levels or tempo.
 namespace Presets
 {
@@ -87,6 +87,23 @@ inline const std::vector<Preset>& all()
           { { waveform, Wave::supersaw }, { detune, 25 }, { cutoff, 3000 }, { lfoSync, 1 }, { lfoDepth, 1.5f },
             { chorusMix, 0.4f }, { delayMix, 0.5f }, { delayTime, 3 }, { delayFeedback, 0.7f },
             { reverbMix, 0.5f }, { reverbSize, 0.9f }, { reverbDamping, 0.3f } } },
+
+        // Your voice, snapped hard to the notes, with the robot underneath.
+        { "Hard Tune",
+          { { tuneOn, 1 }, { tuneSpeed, 0 }, { mix, 0.45f }, { waveform, Wave::supersaw }, { detune, 12 },
+            { cutoff, 7000 }, { chorusMix, 0.3f }, { delayMix, 0.2f }, { delayTime, 3 }, { reverbMix, 0.25f } } },
+
+        // No keys needed: the synth follows the melody you sing.
+        { "Sing the Synth",
+          { { singToPlay, 1 }, { tuneOn, 1 }, { tuneSpeed, 10 }, { waveform, Wave::saw }, { osc2Level, 0.35f },
+            { osc2Semitones, 12 }, { glide, 30 }, { carrierRelease, 80 }, { cutoff, 8000 }, { chorusMix, 0.35f },
+            { reverbMix, 0.2f } } },
+
+        // Sing one note, hear a three-note chord in your key.
+        { "Harmony Choir",
+          { { singToPlay, 3 }, { tuneOn, 1 }, { tuneSpeed, 20 }, { mix, 0.8f }, { waveform, Wave::supersaw },
+            { detune, 25 }, { bands, 28 }, { carrierAttack, 40 }, { carrierRelease, 300 }, { cutoff, 6000 },
+            { chorusMix, 0.5f }, { reverbMix, 0.45f }, { reverbSize, 0.8f } } },
     };
     return presets;
 }
@@ -95,7 +112,7 @@ inline const std::vector<Preset>& all()
 inline bool keepsValue (const juce::String& id)
 {
     using namespace ParamIDs;
-    for (auto* kept : { inputGain, gateThreshold, tempo, metronome, chordTiming, drone, droneNote, outputGain })
+    for (auto* kept : { inputGain, gateThreshold, tempo, metronome, chordTiming, drone, droneNote, outputGain, tuneKey, tuneScale })
         if (id == kept)
             return true;
     return false;

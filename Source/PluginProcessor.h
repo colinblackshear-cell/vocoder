@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dsp/Arpeggiator.h"
+#include "dsp/AutoTune.h"
 #include "dsp/CarrierSynth.h"
 #include "dsp/Effects.h"
 #include "dsp/Filter.h"
@@ -51,6 +52,11 @@ public:
     double getClockPosition() const { return uiPosition.load(); }
     double getRecordStartPosition() const { return uiRecordStart.load(); }
 
+    // For the UI's tuner: the sung pitch as a fractional MIDI note (or < 0 when silent),
+    // and the note auto-tune is pulling it to.
+    float getSungPitch() const { return uiSungPitch.load(); }
+    int getTargetNote() const { return uiTargetNote.load(); }
+
 private:
     struct Timing
     {
@@ -63,6 +69,7 @@ private:
     Timing readTiming();
     void updateSettings (const Timing& timing);
     void handleMidi (const juce::MidiMessage& message);
+    void updateSungNotes (int mode);
     void scheduleChord (uint64_t packed, const Timing& timing);
     void applyChord();
     void scheduleRecording (Timing& timing);
@@ -74,6 +81,12 @@ private:
     vox::CarrierSynth synth;
     vox::Arpeggiator arp;
     vox::NoiseGate gate;
+    vox::AutoTune autoTune;
+    int tuneKey = 0, tuneScale = 0, singMode = 0, lastSung = -1;
+    std::array<int, 3> sungNotes {};
+    int sungCount = 0;
+    std::atomic<float> uiSungPitch { -1.0f };
+    std::atomic<int> uiTargetNote { -1 };
 
     vox::StateVariableFilter filter;
     vox::Lfo lfo;

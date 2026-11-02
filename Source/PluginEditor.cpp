@@ -10,8 +10,9 @@ constexpr int keyboardHeight = 90;
 constexpr int keyboardToolsHeight = 28;
 constexpr int chordPadHeight = 36;
 constexpr int numWhiteKeys = 36; // C2 to C7
-const auto background = juce::Colour (0xff1d1f24);
-const auto recordRed = juce::Colour (0xffd23c3c);
+constexpr int presetBarHeight = 44;
+const auto background = Palette::background;
+const auto recordRed = Palette::record;
 } // namespace
 
 //==============================================================================
@@ -55,6 +56,7 @@ LiveBar::LiveBar (VocoderProcessor& p, juce::AudioDeviceManager& dm, juce::Value
     };
     addAndMakeVisible (showFilesButton);
 
+    tempoSlider.setColour (juce::Slider::textBoxTextColourId, Palette::text);
     tempoSlider.setTextBoxStyle (juce::Slider::TextBoxLeft, false, 48, 26);
     tempoSlider.setNumDecimalPlacesToDisplay (0);
     tempoSlider.setWantsKeyboardFocus (false);
@@ -82,8 +84,9 @@ LiveBar::~LiveBar()
 
 void LiveBar::paint (juce::Graphics& g)
 {
-    g.setColour (juce::Colours::black.withAlpha (0.25f));
-    g.fillRect (getLocalBounds());
+    g.fillAll (Palette::panel);
+    g.setColour (Palette::panelEdge);
+    g.fillRect (0, getHeight() - 1, getWidth(), 1);
 }
 
 void LiveBar::resized()
@@ -94,13 +97,14 @@ void LiveBar::resized()
     auto row = area.removeFromTop (30);
 
     // Right side: tempo, click, mic, record.
-    auto right = row.removeFromRight (420);
-    auto rightLabels = labels.removeFromRight (420);
+    auto right = row.removeFromRight (470);
+    auto rightLabels = labels.removeFromRight (470);
     tempoLabel.setBounds (rightLabels.removeFromLeft (100));
     tempoSlider.setBounds (right.removeFromLeft (100));
-    metronomeButton.setBounds (right.removeFromLeft (62));
-    micOnButton.setBounds (right.removeFromLeft (72));
-    recordButton.setBounds (right.removeFromLeft (64).reduced (0, 1));
+    right.removeFromLeft (8);
+    metronomeButton.setBounds (right.removeFromLeft (70));
+    micOnButton.setBounds (right.removeFromLeft (82));
+    recordButton.setBounds (right.removeFromLeft (70).reduced (0, 1));
     showFilesButton.setBounds (right.removeFromRight (56).reduced (0, 1));
     recordTime.setBounds (right.reduced (4, 0));
 
@@ -396,8 +400,13 @@ PresetBar::PresetBar (VocoderProcessor& p) : processor (p)
     prevButton.onClick = [this] { choose (processor.getCurrentProgram() - 1); };
     nextButton.onClick = [this] { choose (processor.getCurrentProgram() + 1); };
 
-    title.setFont (juce::FontOptions (14.0f, juce::Font::bold));
-    for (auto* c : std::initializer_list<juce::Component*> { &title, &presetBox, &prevButton, &nextButton })
+    title.setFont (juce::FontOptions (12.0f));
+    title.setColour (juce::Label::textColourId, Palette::dim);
+    title.setJustificationType (juce::Justification::centredRight);
+    advancedButton.setClickingTogglesState (true);
+    advancedButton.setTooltip ("Every setting, as a list");
+    advancedButton.setColour (juce::TextButton::buttonOnColourId, Palette::synth.withAlpha (0.6f));
+    for (auto* c : std::initializer_list<juce::Component*> { &title, &presetBox, &prevButton, &nextButton, &advancedButton })
     {
         c->setWantsKeyboardFocus (false);
         addAndMakeVisible (c);
@@ -420,18 +429,42 @@ void PresetBar::timerCallback()
 
 void PresetBar::paint (juce::Graphics& g)
 {
-    g.fillAll (juce::Colour (0xff1c2530));
+    g.fillAll (Palette::background);
+
+    // Wordmark: a small row of "bands" and the name.
+    auto area = getLocalBounds().reduced (14, 0);
+    const float heights[] = { 0.35f, 0.7f, 1.0f, 0.55f, 0.85f, 0.45f, 0.65f };
+    const juce::Colour colours[] = { Palette::voice, Palette::filter, Palette::synth, Palette::tune, Palette::arp,
+                                     Palette::fx, Palette::voice };
+    const float barArea = 18.0f, midY = (float) getHeight() * 0.5f;
+    for (int i = 0; i < 7; ++i)
+    {
+        const float h = barArea * heights[i];
+        g.setColour (colours[i]);
+        g.fillRoundedRectangle ((float) area.getX() + (float) i * 5.0f, midY - h * 0.5f, 3.0f, h, 1.5f);
+    }
+    g.setColour (Palette::text);
+    g.setFont (juce::FontOptions (17.0f, juce::Font::bold));
+    g.drawText ("VOCODER", area.withTrimmedLeft (44), juce::Justification::centredLeft);
+
+    g.setColour (Palette::panelEdge);
+    g.fillRect (0, getHeight() - 1, getWidth(), 1);
 }
 
 void PresetBar::resized()
 {
-    auto area = getLocalBounds().reduced (8, 5);
-    title.setBounds (area.removeFromLeft (56));
-    prevButton.setBounds (area.removeFromLeft (30));
-    area.removeFromLeft (4);
-    presetBox.setBounds (area.removeFromLeft (220));
-    area.removeFromLeft (4);
-    nextButton.setBounds (area.removeFromLeft (30));
+    auto area = getLocalBounds().reduced (12, 8);
+    advancedButton.setBounds (area.removeFromRight (96));
+
+    auto centre = area.withSizeKeepingCentre (juce::jmin (380, area.getWidth() - 260), area.getHeight());
+    centre.translate (40, 0);
+    title.setBounds (centre.removeFromLeft (50));
+    centre.removeFromLeft (6);
+    prevButton.setBounds (centre.removeFromLeft (30));
+    centre.removeFromLeft (4);
+    nextButton.setBounds (centre.removeFromRight (30));
+    centre.removeFromRight (4);
+    presetBox.setBounds (centre);
 }
 
 //==============================================================================
@@ -439,6 +472,7 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     : AudioProcessorEditor (p),
       processor (p),
       presetBar (p),
+      mainPanel (p),
       controls (p),
       keyboard (p.keyboardState),
       chordPad (p, keyboard)
@@ -450,8 +484,15 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
             addAndMakeVisible (*liveBar);
         }
 
+    setLookAndFeel (&look);
+
     addAndMakeVisible (presetBar);
-    addAndMakeVisible (controls);
+    addAndMakeVisible (mainPanel);
+    addChildComponent (controls);
+    presetBar.advancedButton.onClick = [this] { showAdvanced (presetBar.advancedButton.getToggleState()); };
+    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffe9ecf2));
+    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff1b1f27));
+    keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff9aa3b2));
 
     keyboard.setAvailableRange (36, 96);
     keyboard.setWantsKeyboardFocus (false);
@@ -477,8 +518,19 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
 
     setWantsKeyboardFocus (true);
     setResizable (true, true);
-    setResizeLimits (640, 420, 1600, 1400);
-    setSize (820, liveBar != nullptr ? 794 : 714);
+    setResizeLimits (760, 600, 1600, 1400);
+    setSize (900, liveBar != nullptr ? 840 : 760);
+}
+
+VocoderEditor::~VocoderEditor()
+{
+    setLookAndFeel (nullptr);
+}
+
+void VocoderEditor::showAdvanced (bool advanced)
+{
+    mainPanel.setVisible (! advanced);
+    controls.setVisible (advanced);
 }
 
 void VocoderEditor::setOctave (int octave)
@@ -539,7 +591,7 @@ void VocoderEditor::resized()
     auto area = getLocalBounds();
     if (liveBar != nullptr)
         liveBar->setBounds (area.removeFromTop (liveBarHeight));
-    presetBar.setBounds (area.removeFromTop (34));
+    presetBar.setBounds (area.removeFromTop (presetBarHeight));
 
     keyboard.setBounds (area.removeFromBottom (keyboardHeight));
     keyboard.setKeyWidth ((float) keyboard.getWidth() / numWhiteKeys);
@@ -551,5 +603,6 @@ void VocoderEditor::resized()
     tools.removeFromLeft (10);
     keyHint.setBounds (tools);
 
+    mainPanel.setBounds (area);
     controls.setBounds (area);
 }

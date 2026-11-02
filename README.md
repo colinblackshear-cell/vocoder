@@ -54,12 +54,29 @@ Chord buttons change on the next beat by default, so a slightly early or late cl
 
 Your devices and settings are remembered for next time.
 
+## The window
+
+The main view shows the controls that matter most, as knobs in coloured sections: **Voice**, **Synth**,
+**Auto-Tune**, **Arp**, **Filter**, **Effects** and **Mix**. Hover over any control for a tip, and
+double-click a knob to reset it. **Advanced** (top right) shows every setting as a list.
+
+## Auto-tune
+
+- **Auto-Tune** snaps your voice to the nearest note. Pick the song's **Key** and **Scale**, or leave the
+  scale on Chromatic to work in any key. **Speed** at 0 gives the hard, robotic effect; higher sounds
+  natural. **Amount** blends in less correction. You hear the tuned voice through **Dry/Wet**: turn it down
+  from 100% to mix your tuned voice with the vocoder.
+- **Sing to Play** makes the synth follow the melody you sing, so you don't need any keys. **Melody + Third**
+  and **Full Chord** add harmony notes in your key. (In Chromatic, the harmony uses the major scale of the key.)
+- The strip under the knobs shows the note you're singing and how far off it is.
+
 ## Sounds (presets)
 
 The **Sound** menu (also in Logic's preset menu at the top of the plugin window) has ready-made starting
 points: Init, Classic Robot, French Touch, Choir Pad, Whisper Ghost, Trance Gate, Stutter Chop, Arp Robot,
-Acid Wobble, Auto-Wah Funk, Lo-Fi Radio, Monster, Chipmunk Bot and Space Echo. Choosing one resets the sound
-but leaves your input gain, gate, tempo, metronome, drone and output level alone. Tweak from there; Logic
+Acid Wobble, Auto-Wah Funk, Lo-Fi Radio, Monster, Chipmunk Bot, Space Echo, Hard Tune, Sing the Synth and
+Harmony Choir. Choosing one resets the sound but leaves your input gain, gate, tempo, metronome, key, scale,
+drone and output level alone. Tweak from there; Logic
 saves your changes with the song.
 
 ## Controls
@@ -89,6 +106,9 @@ saves your changes with the song.
 | Timing | Tempo (standalone) | Used when there's no DAW. In Logic everything follows the project tempo and locks to the bar |
 | Timing | Metronome (standalone) | The click, the same as the **Click** box |
 | Timing | Chord Timing | When a chord button change takes effect: Instant, Next Beat or Next Bar |
+| Auto-Tune | Auto-Tune, Key, Scale | Pitch correction on your voice, to the notes of the chosen key and scale |
+| Auto-Tune | Retune Speed, Tune Amount | How fast and how fully notes snap |
+| Auto-Tune | Sing to Play | Off, Melody, Melody + Third, Full Chord: your sung notes play the synth |
 | Filter | Filter Type, Cutoff, Resonance | Low pass, high pass, band pass or notch after the vocoder. High resonance whistles |
 | Filter | Filter Drive | Saturates into the filter for a grittier, acid-style sweep |
 | Filter | Voice Follow | Opens (or closes) the filter as you get louder, like an auto-wah |
@@ -122,4 +142,5 @@ The DSP tests also build without JUCE: `cmake -S . -B build -DVOCODER_TESTS_ONLY
 5. ~~Presets, metronome and bar-exact recording, more synth options~~
 6. ~~Standalone live mode: device pickers, recorder, on-screen keyboard, chord buttons~~
 7. Unison, chord memory, phaser, limiter
-8. Custom interface, user presets, MIDI learn
+8. ~~Auto-tune, Sing to Play, designed interface~~
+9. User presets, MIDI learn

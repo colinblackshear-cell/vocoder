@@ -1,5 +1,6 @@
 // Plain C++ tests for the DSP code. No JUCE needed, so they build in seconds.
 #include "../Source/dsp/Arpeggiator.h"
+#include "../Source/dsp/AutoTune.h"
 #include "../Source/dsp/CarrierSynth.h"
 #include "../Source/dsp/Effects.h"
 #include "../Source/dsp/Filter.h"
@@ -366,6 +367,133 @@ void testEffects()
     }
     check (firstL > 0.3f && firstR < 0.01f && secondR > 0.1f, "ping-pong delay bounces left then right");
 }
+// A voice-like test tone: a few harmonics, falling off like a sung vowel.
+float voiceTone (double& phase, double hz)
+{
+    const float out = 0.5f * (float) (std::sin (phase) + 0.6 * std::sin (2 * phase) + 0.4 * std::sin (3 * phase)
+                                      + 0.2 * std::sin (5 * phase));
+    phase += 2.0 * vox::pi * hz / sr;
+    return out;
+}
+
+// Average pitch, in Hz, that a fresh tracker finds in a signal.
+double measurePitch (const std::vector<float>& signal)
+{
+    vox::PitchTracker t;
+    t.prepare (sr);
+    double sum = 0.0;
+    int count = 0;
+    for (size_t i = 0; i < signal.size(); ++i)
+        if (t.process (signal[i]) && t.isVoiced() && i > signal.size() / 3)
+        {
+            sum += t.getFrequency();
+            ++count;
+        }
+    return count > 0 ? sum / count : 0.0;
+}
+
+void testAutoTune()
+{
+    for (double hz : { 82.0, 110.0, 196.0, 261.6, 440.0, 700.0 })
+    {
+        std::vector<float> tone;
+        double phase = 0.0;
+        for (int i = 0; i < (int) sr / 2; ++i)
+            tone.push_back (voiceTone (phase, hz));
+        const double found = measurePitch (tone);
+        char what[96];
+        std::snprintf (what, sizeof what, "pitch tracker finds %.1f Hz (got %.2f)", hz, found);
+        check (std::abs (found - hz) / hz < 0.005, what);
+    }
+
+    {
+        vox::PitchTracker t;
+        t.prepare (sr);
+        bool voiced = false;
+        unsigned seed = 1;
+        for (int i = 0; i < (int) sr / 2; ++i)
+        {
+            seed = seed * 1664525u + 1013904223u;
+            if (t.process (((float) (seed >> 8) / 16777216.0f - 0.5f) * 0.5f) && i > 4800)
+                voiced = voiced || t.isVoiced();
+        }
+        check (! voiced, "pitch tracker ignores noise");
+    }
+
+    for (double semis : { 1.0, -1.0, 3.0 })
+    {
+        vox::PitchShifter shifter;
+        shifter.prepare (sr);
+        shifter.setPeriod (sr / 220.0);
+        std::vector<float> out;
+        double phase = 0.0;
+        const float ratio = (float) std::exp2 (semis / 12.0);
+        for (int i = 0; i < (int) sr; ++i)
+            out.push_back (shifter.process (voiceTone (phase, 220.0), ratio));
+        const double expected = 220.0 * ratio, found = measurePitch (out);
+
+        // Level stays steady once the heads lock to the voice's period (no phasey dips).
+        double quietest = 1.0e9, loudest = 0.0;
+        for (size_t start = (size_t) sr / 3; start + 480 < out.size(); start += 480)
+        {
+            double e = 0.0;
+            for (size_t i = start; i < start + 480; ++i)
+                e += out[i] * out[i];
+            quietest = std::min (quietest, e);
+            loudest = std::max (loudest, e);
+        }
+        const double steadiness = std::sqrt (quietest / loudest);
+
+        char what[128];
+        std::snprintf (what, sizeof what, "pitch shifter moves 220 Hz by %+.0f semitones (%.1f Hz, want %.1f), level steady (%.2f)",
+                       semis, found, expected, steadiness);
+        check (std::abs (found - expected) / expected < 0.01 && steadiness > 0.8, what);
+    }
+
+    // A slightly sharp A (226 Hz) in C major snaps to A3 = 220 Hz.
+    {
+        vox::AutoTune tune;
+        tune.prepare (sr);
+        tune.setSettings ({ true, 0, 1, 0.0f, 1.0f });
+        std::vector<float> out;
+        double phase = 0.0;
+        for (int i = 0; i < (int) sr; ++i)
+            out.push_back (tune.process (voiceTone (phase, 226.0)));
+        const double found = measurePitch (out);
+        char what[96];
+        std::snprintf (what, sizeof what, "auto-tune pulls 226 Hz to 220 Hz (got %.1f), sung note A3 (got %d)", found, tune.getSungNote());
+        check (std::abs (found - 220.0) < 1.5 && tune.getSungNote() == 57, what);
+    }
+
+    // C# isn't in C major: 280 Hz (just above C#4) goes to the nearer scale note, D4.
+    {
+        vox::AutoTune tune;
+        tune.prepare (sr);
+        tune.setSettings ({ true, 0, 1, 0.0f, 1.0f });
+        std::vector<float> out;
+        double phase = 0.0;
+        for (int i = 0; i < (int) sr; ++i)
+            out.push_back (tune.process (voiceTone (phase, 280.0))); // a bit above C#4
+        const double found = measurePitch (out);
+        check (std::abs (found - 293.66) < 2.0, "auto-tune moves an out-of-key note to the nearest scale note (D4)");
+    }
+
+    // Off: the voice passes through untouched.
+    {
+        vox::AutoTune tune;
+        tune.prepare (sr);
+        tune.setSettings ({ false, 0, 1, 0.0f, 1.0f });
+        double phase = 0.0, phase2 = 0.0;
+        float maxDiff = 0.0f;
+        for (int i = 0; i < 4800; ++i)
+            maxDiff = std::max (maxDiff, std::abs (tune.process (voiceTone (phase, 226.0)) - voiceTone (phase2, 226.0)));
+        check (maxDiff < 1.0e-6f, "auto-tune off leaves the voice untouched");
+    }
+
+    check (vox::Scales::stepsAbove (60, 2, 0, 1) == 64 && vox::Scales::stepsAbove (62, 2, 0, 1) == 65
+               && vox::Scales::stepsAbove (57, 4, 9, 2) == 64,
+           "harmony steps follow the scale (C-E, D-F, A-E)");
+}
 } // namespace
 
 int main()
@@ -378,6 +506,7 @@ int main()
     testArpeggiator();
     testFilter();
     testEffects();
+    testAutoTune();
     std::printf ("\n%s\n", failures == 0 ? "All tests passed" : "Some tests failed");
     return failures == 0 ? 0 : 1;
 }
