@@ -31,11 +31,21 @@ If Logic doesn't list it, open **Logic Pro > Settings > Plug-in Manager**, find 
 
 ## Use it live (standalone app)
 
+You don't need Logic or a MIDI keyboard: the app has its own synth, on-screen keyboard and recorder.
+
 1. Open Vocoder.app and allow microphone access when asked.
-2. Click **Options > Audio/MIDI Settings**. Pick your mic (built-in, USB or interface) as the input, your
-   headphones or speakers as the output, and tick your MIDI keyboard.
-3. The app mutes the mic at first to avoid feedback. Put on headphones, then click **Unmute** in the yellow bar.
-4. No keyboard handy? Turn on **Drone (no keys)** and pick a **Drone Note**.
+2. In the bar at the top, pick your **Mic** and **Output** (use headphones), then tick **Mic on**.
+   A MIDI keyboard is picked up automatically; choose one under **Keyboard** if you have several.
+3. Play notes any of these ways:
+   - Click a **chord button** (pick the key and Major/Minor first). Click it again to stop.
+   - Click keys on the **on-screen keyboard**. Turn on **Hold keys** to make clicked notes keep playing.
+   - Type on your computer keyboard: **A S D F G H J K** are the white keys, **W E T Y U** the black keys.
+     **Oct -** and **Oct +** move them up or down.
+   - Or turn on **Drone (no keys)** in the Carrier section for a single held note.
+4. Sing or talk. Press **Record** to capture what you hear, and **Stop** to save it as a WAV in
+   `Music/Vocoder Recordings`. **Show recordings** opens that folder.
+
+Your devices and settings are remembered for next time.
 
 ## Controls
 
@@ -88,4 +98,5 @@ The DSP tests also build without JUCE: `cmake -S . -B build -DVOCODER_TESTS_ONLY
 3. ~~Filter (cutoff, resonance, drive) and LFO modulation~~
 4. ~~FX chain: distortion, bit crush, chorus, delay, reverb~~
 5. Vocoder styles (presets), unison, chord memory, phaser, limiter
-6. Custom interface, preset browser, MIDI learn
+6. ~~Standalone live mode: device pickers, recorder, on-screen keyboard, chord buttons~~
+7. Custom interface, preset browser, MIDI learn

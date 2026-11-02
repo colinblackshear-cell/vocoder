@@ -76,5 +76,45 @@ int main()
             ++failures;
     }
 
+    // The on-screen keyboard and chord buttons feed notes through keyboardState,
+    // and the Record button writes the output to a WAV.
+    {
+        set ("arpMode", 0.0f);
+        set ("delayMix", 0.0f);
+        set ("reverbMix", 0.0f);
+        processor.keyboardState.allNotesOff (1);
+
+        const bool started = processor.recorder.start (sampleRate, 2);
+        for (int note : { 48, 51, 55, 60 })
+            processor.keyboardState.noteOn (1, note, 0.8f);
+
+        juce::AudioBuffer<float> buffer (2, blockSize);
+        double phase = 0.0;
+        float peak = 0.0f;
+        for (int block = 0; block < 200; ++block)
+        {
+            for (int i = 0; i < blockSize; ++i)
+            {
+                const float voice = 0.3f * (float) std::sin (phase);
+                phase += 2.0 * juce::MathConstants<double>::pi * 140.0 / sampleRate;
+                buffer.setSample (0, i, voice);
+                buffer.setSample (1, i, voice);
+            }
+            juce::MidiBuffer midi;
+            processor.processBlock (buffer, midi);
+            peak = std::max (peak, buffer.getMagnitude (0, blockSize));
+        }
+        processor.recorder.stop();
+
+        const auto file = processor.recorder.getLastFile();
+        const bool played = peak > 0.05f;
+        const bool recorded = started && file.getSize() > 200 * blockSize * 2 * 3;
+        std::printf ("%s  on-screen notes play the vocoder: peak %.3f\n", played ? "PASS" : "FAIL", peak);
+        std::printf ("%s  recording saved: %s (%lld bytes)\n", recorded ? "PASS" : "FAIL",
+                     file.getFileName().toRawUTF8(), (long long) file.getSize());
+        file.deleteFile();
+        failures += (played ? 0 : 1) + (recorded ? 0 : 1);
+    }
+
     return failures == 0 ? 0 : 1;
 }
