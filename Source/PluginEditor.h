@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Look.h"
+#include "MainPanel.h"
 #include "PluginProcessor.h"
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -99,6 +101,8 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
 
+    juce::TextButton advancedButton { "Advanced" };
+
 private:
     void timerCallback() override;
     void choose (int index);
@@ -113,6 +117,7 @@ class VocoderEditor : public juce::AudioProcessorEditor
 {
 public:
     explicit VocoderEditor (VocoderProcessor&);
+    ~VocoderEditor() override;
 
     void resized() override;
     void paint (juce::Graphics&) override;
@@ -124,9 +129,14 @@ private:
     void parentHierarchyChanged() override;
     void focusForComputerKeys (int attemptsLeft);
 
+    void showAdvanced (bool advanced);
+
+    VocoderLook look;
+    juce::TooltipWindow tooltips { this, 600 };
     VocoderProcessor& processor;
     std::unique_ptr<LiveBar> liveBar;
     PresetBar presetBar;
+    MainPanel mainPanel;
     juce::GenericAudioProcessorEditor controls;
     LatchKeyboard keyboard;
     ChordPad chordPad;

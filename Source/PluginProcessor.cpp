@@ -46,6 +46,7 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     synth.prepare (sampleRate);
     arp.prepare (sampleRate);
     gate.prepare (sampleRate);
+    autoTune.prepare (sampleRate);
     filter.prepare (sampleRate);
     voiceLevel.setTimes (sampleRate, 5.0, 150.0);
     voiceLevel.reset();
@@ -178,6 +179,21 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     reverb.setParameters (rp);
 
     gate.setThresholdDb (raw (params, ParamIDs::gateThreshold));
+
+    vox::AutoTune::Settings ts;
+    ts.correct = raw (params, ParamIDs::tuneOn) > 0.5f;
+    ts.key = tuneKey = index (params, ParamIDs::tuneKey);
+    ts.scale = tuneScale = index (params, ParamIDs::tuneScale);
+    ts.speedMs = raw (params, ParamIDs::tuneSpeed);
+    ts.amount = raw (params, ParamIDs::tuneAmount);
+    autoTune.setSettings (ts);
+
+    const int newSingMode = index (params, ParamIDs::singToPlay);
+    if (newSingMode != singMode)
+    {
+        singMode = newSingMode;
+        lastSung = -2; // re-voice whatever is being sung
+    }
     inputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (params, ParamIDs::inputGain)));
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (params, ParamIDs::outputGain)));
     mix.setTargetValue (raw (params, ParamIDs::mix));
@@ -191,6 +207,30 @@ void VocoderProcessor::handleMidi (const juce::MidiMessage& message)
         arp.noteOff (message.getNoteNumber(), synth);
     else if (message.isAllNotesOff() || message.isAllSoundOff())
         arp.allNotesOff (synth);
+}
+
+void VocoderProcessor::updateSungNotes (int mode)
+{
+    // Sing to Play: the note being sung (snapped to the scale) plays the synth,
+    // optionally with a third, or a third and a fifth, above it in the key.
+    for (int i = 0; i < sungCount; ++i)
+        arp.noteOff (sungNotes[(size_t) i], synth);
+    sungCount = 0;
+
+    const int note = autoTune.getSungNote();
+    if (mode == 0 || note < 0)
+        return;
+
+    // Harmony needs a key: in Chromatic, use the major scale of the chosen key.
+    const int harmonyScale = tuneScale == 0 ? 1 : tuneScale;
+    sungNotes[(size_t) sungCount++] = note;
+    if (mode >= 2)
+        sungNotes[(size_t) sungCount++] = vox::Scales::stepsAbove (note, 2, tuneKey, harmonyScale);
+    if (mode >= 3)
+        sungNotes[(size_t) sungCount++] = vox::Scales::stepsAbove (note, 4, tuneKey, harmonyScale);
+
+    for (int i = 0; i < sungCount; ++i)
+        arp.noteOn (sungNotes[(size_t) i], 0.8f, synth);
 }
 
 void VocoderProcessor::requestChord (const juce::Array<int>& notes, bool immediate)
@@ -321,6 +361,9 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     if (const auto packed = pendingChord.exchange (0); packed != 0)
         scheduleChord (packed, timing);
 
+    // Pitch tracking costs CPU, so it only runs when auto-tune or Sing to Play needs it.
+    const bool tuning = singMode != 0 || raw (params, ParamIDs::tuneOn) > 0.5f;
+
     const auto recState = recorder.getState();
     int writeFrom = (recState == Recorder::State::recording || recState == Recorder::State::stopping) ? 0 : -1;
     int writeTo = buffer.getNumSamples();
@@ -370,6 +413,14 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             voice += sideIn.getSample (ch, i) * sideScale;
 
         voice = gate.process (voice * inputGain.getNextValue());
+        if (tuning)
+            voice = autoTune.process (voice);
+
+        if (const int sung = singMode != 0 ? autoTune.getSungNote() : -1; sung != lastSung)
+        {
+            lastSung = sung;
+            updateSungNotes (singMode);
+        }
 
         // Vocoder, then the rhythm gate, then the filter.
         const float arpGain = arp.process (synth);
@@ -418,6 +469,9 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     }
 
     addMetronome (out, timing, beatsPerSample);
+
+    uiSungPitch = tuning && autoTune.isVoiced() ? autoTune.getDetectedMidi() : -1.0f;
+    uiTargetNote = tuning && autoTune.isVoiced() ? autoTune.getSungNote() : -1;
 
     const double next = timing.ppq + numSamples * beatsPerSample;
     if (! timing.hostPlaying)

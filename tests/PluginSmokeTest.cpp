@@ -139,6 +139,28 @@ int main()
                "presets keep input gain and tempo, reset everything else");
     }
 
+    // Sing to Play: with no keys pressed, singing an A makes the vocoder play A3.
+    {
+        VocoderProcessor proc;
+        proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
+        proc.prepareToPlay (sampleRate, blockSize);
+        auto setIn = [&] (const char* id, float v)
+        {
+            auto* p = proc.params.getParameter (id);
+            p->setValueNotifyingHost (p->convertTo0to1 (v));
+        };
+        bool finite = true;
+        const float silent = run (proc, 100, finite); // no notes yet: the vocoder stays quiet
+        setIn ("singToPlay", 1.0f);
+        setIn ("tuneOn", 1.0f);
+        run (proc, 50, finite);
+        const float singing = run (proc, 200, finite);
+        const int target = proc.getTargetNote();
+        check (finite && silent < 0.01f && singing > 0.05f && target >= 0,
+               "sing to play: quiet " + juce::String (silent, 4) + ", singing " + juce::String (singing, 3)
+                   + ", note " + juce::MidiMessage::getMidiNoteName (target, true, true, 3));
+    }
+
     // With Chord Timing on Next Bar, a chord clicked mid-bar waits for the bar line.
     {
         VocoderProcessor proc;

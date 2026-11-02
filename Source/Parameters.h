@@ -44,6 +44,13 @@ inline constexpr auto tempo = "tempo";
 inline constexpr auto metronome = "metronome";
 inline constexpr auto chordTiming = "chordTiming";
 
+inline constexpr auto tuneOn = "tuneOn";
+inline constexpr auto tuneKey = "tuneKey";
+inline constexpr auto tuneScale = "tuneScale";
+inline constexpr auto tuneSpeed = "tuneSpeed";
+inline constexpr auto tuneAmount = "tuneAmount";
+inline constexpr auto singToPlay = "singToPlay";
+
 inline constexpr auto filterMode = "filterMode";
 inline constexpr auto cutoff = "cutoff";
 inline constexpr auto resonance = "resonance";
@@ -169,6 +176,15 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         real (ParamIDs::tempo, "Tempo (standalone)", { 60.0f, 200.0f, 0.1f }, 120.0f, "BPM"),
         toggle (ParamIDs::metronome, "Metronome (standalone)", false),
         choice (ParamIDs::chordTiming, "Chord Timing", { "Instant", "Next Beat", "Next Bar" }, 1)));
+
+    layout.add (std::make_unique<Group> (
+        "autotune", "Auto-Tune", "|",
+        toggle (ParamIDs::tuneOn, "Auto-Tune", false),
+        choice (ParamIDs::tuneKey, "Key", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, 0),
+        choice (ParamIDs::tuneScale, "Scale", { "Chromatic", "Major", "Minor", "Major Pentatonic", "Minor Pentatonic", "Blues" }, 0),
+        real (ParamIDs::tuneSpeed, "Retune Speed", skewed (0.0f, 200.0f, 30.0f), 15.0f, "ms"),
+        real (ParamIDs::tuneAmount, "Tune Amount", { 0.0f, 1.0f, 0.01f }, 1.0f, ""),
+        choice (ParamIDs::singToPlay, "Sing to Play", { "Off", "Melody", "Melody + Third", "Full Chord" }, 0)));
 
     layout.add (std::make_unique<Group> (
         "filter", "Filter", "|",
