@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "Parameters.h"
+#include "Presets.h"
 #include "PluginEditor.h"
 
 namespace
@@ -52,6 +53,7 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     delay.prepare (sampleRate);
     reverb.setSampleRate (sampleRate);
     reverb.reset();
+    clickDecay = (float) std::exp (-1.0 / (0.015 * sampleRate));
 
     inputGain.reset (sampleRate, 0.02);
     outputGain.reset (sampleRate, 0.02);
@@ -77,12 +79,17 @@ VocoderProcessor::Timing VocoderProcessor::readTiming()
         {
             if (auto bpm = position->getBpm(); bpm && *bpm > 0.0)
                 t.bpm = *bpm;
+            if (auto sig = position->getTimeSignature(); sig && sig->numerator > 0 && sig->denominator > 0)
+                t.beatsPerBar = sig->numerator * 4.0 / sig->denominator;
             if (auto ppq = position->getPpqPosition(); ppq && position->getIsPlaying())
             {
                 t.ppq = *ppq;
                 t.hostPlaying = true;
             }
         }
+
+    if (! t.hostPlaying)
+        t.ppq = clockPosition;
     return t;
 }
 
@@ -133,8 +140,7 @@ void VocoderProcessor::updateSettings (const Timing& timing)
 
     const double stepBeats = NoteLengths::arpBeats[juce::jlimit (0, 5, index (params, ParamIDs::arpRate))];
     arp.setIncrement (beatsPerSample / stepBeats);
-    if (timing.hostPlaying)
-        arp.syncTo (timing.ppq / stepBeats);
+    arp.syncTo (timing.ppq / stepBeats);
 
     filter.setMode ((vox::FilterMode) index (params, ParamIDs::filterMode));
     cutoff.setTargetValue (raw (params, ParamIDs::cutoff));
@@ -148,8 +154,7 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     if (lfoBeats > 0.0)
     {
         lfo.setIncrement (beatsPerSample / lfoBeats);
-        if (timing.hostPlaying)
-            lfo.syncTo (timing.ppq / lfoBeats);
+        lfo.syncTo (timing.ppq / lfoBeats);
     }
     else
     {
@@ -188,11 +193,138 @@ void VocoderProcessor::handleMidi (const juce::MidiMessage& message)
         arp.allNotesOff (synth);
 }
 
+void VocoderProcessor::requestChord (const juce::Array<int>& notes, bool immediate)
+{
+    // Packed so the audio thread can take it with one atomic exchange:
+    // bit 63 = present, bit 62 = immediate, bits 0-7 = count, then one byte per note.
+    uint64_t packed = (uint64_t { 1 } << 63) | (immediate ? uint64_t { 1 } << 62 : 0);
+    const int count = juce::jmin (4, notes.size());
+    packed |= (uint64_t) count;
+    for (int i = 0; i < count; ++i)
+        packed |= (uint64_t) (notes[i] & 0x7f) << (8 * (i + 1));
+    pendingChord = packed;
+}
+
+void VocoderProcessor::scheduleChord (uint64_t packed, const Timing& timing)
+{
+    queuedChord = packed;
+    const bool immediate = (packed >> 62) & 1;
+    const int mode = index (params, ParamIDs::chordTiming); // instant, next beat, next bar
+    const double ppq = timing.ppq;
+
+    // A click just after the beat (or bar) counts as on it, so a slightly late press isn't pushed a whole beat.
+    if (immediate || mode == 0)
+        chordApplyAt = -1.0e9;
+    else if (mode == 1)
+        chordApplyAt = ppq - std::floor (ppq) < 0.1 ? ppq : std::floor (ppq) + 1.0;
+    else
+    {
+        const double bar = std::floor (ppq / timing.beatsPerBar) * timing.beatsPerBar;
+        chordApplyAt = ppq - bar < 0.25 ? ppq : bar + timing.beatsPerBar;
+    }
+}
+
+void VocoderProcessor::applyChord()
+{
+    for (int i = 0; i < chordCount; ++i)
+        arp.noteOff (chordNotes[(size_t) i], synth);
+
+    chordCount = (int) (queuedChord & 0xff);
+    for (int i = 0; i < chordCount; ++i)
+    {
+        chordNotes[(size_t) i] = (int) ((queuedChord >> (8 * (i + 1))) & 0x7f);
+        arp.noteOn (chordNotes[(size_t) i], 0.8f, synth);
+    }
+    queuedChord = 0;
+}
+
+void VocoderProcessor::scheduleRecording (Timing& timing)
+{
+    const auto state = recorder.getState();
+    const double bar = timing.beatsPerBar;
+
+    if (state == Recorder::State::idle)
+        takeScheduled = stopScheduled = false;
+
+    if (state == Recorder::State::countIn && ! takeScheduled)
+    {
+        if (timing.hostPlaying)
+        {
+            // Next bar line at least half a bar away, so there's time to get ready.
+            recordStart = (std::floor (timing.ppq / bar) + 1.0) * bar;
+            if (recordStart - timing.ppq < bar * 0.5)
+                recordStart += bar;
+        }
+        else
+        {
+            // Our own clock: rewind it to one bar before bar 1, for an exact one-bar count-in.
+            clockPosition = timing.ppq = -bar;
+            recordStart = 0.0;
+        }
+        uiRecordStart = recordStart;
+        takeScheduled = true;
+        stopScheduled = false;
+    }
+
+    if (state == Recorder::State::stopping && ! stopScheduled)
+    {
+        recordStop = (std::floor (timing.ppq / bar) + 1.0) * bar;
+        if (recordStop <= recordStart)
+            recordStop = recordStart + bar;
+        stopScheduled = true;
+    }
+}
+
+void VocoderProcessor::addMetronome (juce::AudioBuffer<float>& out, const Timing& timing, double beatsPerSample)
+{
+    const bool counting = recorder.getState() == Recorder::State::countIn;
+    const bool wanted = wrapperType == wrapperType_Standalone && raw (params, ParamIDs::metronome) > 0.5f;
+    if (! counting && ! wanted && clickLevel < 1.0e-3f)
+        return;
+
+    const auto beatsPerBar = juce::jmax<juce::int64> (1, (juce::int64) std::round (timing.beatsPerBar));
+    for (int i = 0; i < out.getNumSamples(); ++i)
+    {
+        const auto beat = (juce::int64) std::floor (timing.ppq + i * beatsPerSample);
+        if (beat != lastClickBeat)
+        {
+            lastClickBeat = beat;
+            if (counting || wanted)
+            {
+                const bool downbeat = ((beat % beatsPerBar) + beatsPerBar) % beatsPerBar == 0;
+                clickLevel = downbeat ? 0.45f : 0.3f;
+                clickStep = (float) (2.0 * juce::MathConstants<double>::pi * (downbeat ? 1600.0 : 1000.0) / sampleRate);
+                clickPhase = 0.0f;
+            }
+        }
+
+        if (clickLevel > 1.0e-3f)
+        {
+            const float click = std::sin (clickPhase) * clickLevel;
+            clickPhase += clickStep;
+            clickLevel *= clickDecay;
+            for (int ch = 0; ch < out.getNumChannels(); ++ch)
+                out.addSample (ch, i, click);
+        }
+    }
+}
+
 void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
 {
     juce::ScopedNoDenormals noDenormals;
-    updateSettings (readTiming());
+    auto timing = readTiming();
+    scheduleRecording (timing);
+    updateSettings (timing);
     keyboardState.processNextMidiBuffer (midi, 0, buffer.getNumSamples(), true);
+
+    const double beatsPerSample = timing.bpm / 60.0 / sampleRate;
+    if (const auto packed = pendingChord.exchange (0); packed != 0)
+        scheduleChord (packed, timing);
+
+    const auto recState = recorder.getState();
+    int writeFrom = (recState == Recorder::State::recording || recState == Recorder::State::stopping) ? 0 : -1;
+    int writeTo = buffer.getNumSamples();
+    bool beginTake = false, endTake = false;
 
     // In Logic the voice usually arrives on the sidechain; standalone it is the main input.
     // Summing both covers every setup, since the unused one is silent.
@@ -215,6 +347,21 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     {
         for (; nextEvent != midi.end() && (*nextEvent).samplePosition <= i; ++nextEvent)
             handleMidi ((*nextEvent).getMessage());
+
+        const double ppq = timing.ppq + i * beatsPerSample;
+        if (queuedChord != 0 && ppq >= chordApplyAt)
+            applyChord();
+
+        if (takeScheduled && recState == Recorder::State::countIn && writeFrom < 0 && ppq >= recordStart)
+        {
+            writeFrom = i;
+            beginTake = true;
+        }
+        if (stopScheduled && recState == Recorder::State::stopping && ! endTake && ppq >= recordStop)
+        {
+            writeTo = i;
+            endTake = true;
+        }
 
         float voice = 0.0f;
         for (int ch = 0; ch < mainChannels; ++ch)
@@ -258,12 +405,52 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         handleMidi ((*nextEvent).getMessage());
 
     midi.clear();
-    recorder.write (out.getArrayOfReadPointers(), numSamples);
+
+    // Record the take before the metronome is added, so the click never ends up in the file.
+    if (beginTake)
+        recorder.beginTake();
+    if (writeFrom >= 0)
+        recorder.write (out.getArrayOfReadPointers(), out.getNumChannels(), writeFrom, writeTo - writeFrom);
+    if (endTake)
+    {
+        recorder.endTake();
+        takeScheduled = stopScheduled = false;
+    }
+
+    addMetronome (out, timing, beatsPerSample);
+
+    const double next = timing.ppq + numSamples * beatsPerSample;
+    if (! timing.hostPlaying)
+        clockPosition = next;
+    uiPosition = next;
 }
 
 juce::AudioProcessorEditor* VocoderProcessor::createEditor()
 {
     return new VocoderEditor (*this);
+}
+
+int VocoderProcessor::getNumPrograms()
+{
+    return (int) Presets::all().size();
+}
+
+int VocoderProcessor::getCurrentProgram()
+{
+    return juce::jlimit (0, getNumPrograms() - 1, (int) params.state.getProperty ("program", 0));
+}
+
+void VocoderProcessor::setCurrentProgram (int index)
+{
+    if (! juce::isPositiveAndBelow (index, getNumPrograms()))
+        return;
+    Presets::apply (params, Presets::all()[(size_t) index]);
+    params.state.setProperty ("program", index, nullptr); // saved with the song
+}
+
+const juce::String VocoderProcessor::getProgramName (int index)
+{
+    return juce::isPositiveAndBelow (index, getNumPrograms()) ? Presets::all()[(size_t) index].name : "";
 }
 
 void VocoderProcessor::getStateInformation (juce::MemoryBlock& destData)

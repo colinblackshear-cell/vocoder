@@ -36,11 +36,17 @@ private:
     juce::Label inputLabel { {}, "Mic" }, outputLabel { {}, "Output" }, midiLabel { {}, "Keyboard" };
     juce::ComboBox inputBox, outputBox, midiBox;
     juce::ToggleButton micOnButton { "Mic on" };
-    juce::TextButton recordButton { "Record" }, showFilesButton { "Show recordings" };
+    juce::TextButton recordButton { "Record" }, showFilesButton { "Files" };
     juce::Label recordTime;
 
+    juce::Label tempoLabel { {}, "Tempo" };
+    juce::Slider tempoSlider { juce::Slider::IncDecButtons, juce::Slider::TextBoxLeft };
+    juce::ToggleButton metronomeButton { "Click" };
+    juce::AudioProcessorValueTreeState::SliderAttachment tempoAttachment;
+    juce::AudioProcessorValueTreeState::ButtonAttachment metronomeAttachment;
+
     juce::StringArray midiIds;
-    juce::int64 recordStartMs = 0;
+    int ticks = 0;
 };
 
 // On-screen keyboard that can latch: with Hold on, a click turns a note on
@@ -65,7 +71,7 @@ private:
 class ChordPad : public juce::Component
 {
 public:
-    explicit ChordPad (juce::MidiKeyboardState& state, LatchKeyboard& keyboard);
+    ChordPad (VocoderProcessor& processor, LatchKeyboard& keyboard);
     void resized() override;
     void stopAll();
 
@@ -76,14 +82,31 @@ private:
     void toggleChord (int index);
     juce::Array<int> notesFor (int index) const;
 
-    juce::MidiKeyboardState& state;
+    VocoderProcessor& processor;
     LatchKeyboard& keyboard;
     juce::ComboBox keyBox, scaleBox;
     juce::TextButton chordButtons[numChords];
     juce::ToggleButton holdButton { "Hold keys" };
     juce::TextButton stopButton { "Stop all" };
     int activeChord = -1;
-    juce::Array<int> sounding;
+};
+
+// Factory preset menu with previous/next buttons.
+class PresetBar : public juce::Component, private juce::Timer
+{
+public:
+    explicit PresetBar (VocoderProcessor& processor);
+    void resized() override;
+    void paint (juce::Graphics&) override;
+
+private:
+    void timerCallback() override;
+    void choose (int index);
+
+    VocoderProcessor& processor;
+    juce::Label title { {}, "Sound" };
+    juce::ComboBox presetBox;
+    juce::TextButton prevButton { "<" }, nextButton { ">" };
 };
 
 class VocoderEditor : public juce::AudioProcessorEditor
@@ -103,6 +126,7 @@ private:
 
     VocoderProcessor& processor;
     std::unique_ptr<LiveBar> liveBar;
+    PresetBar presetBar;
     juce::GenericAudioProcessorEditor controls;
     LatchKeyboard keyboard;
     ChordPad chordPad;
