@@ -75,13 +75,72 @@ void testSynth()
     synth.setSettings (s);
     check (rms ([&] { return synth.process(); }, 4800) > 0.2, "drone plays with no keys held");
 
-    for (auto wave : { vox::Waveform::square, vox::Waveform::supersaw })
+    for (auto wave : { vox::Waveform::square, vox::Waveform::supersaw, vox::Waveform::pulse, vox::Waveform::triangle })
     {
         s.waveform = wave;
         synth.setSettings (s);
         const double level = rms ([&] { return synth.process(); }, 4800);
         check (level > 0.1 && level < 1.5, "every waveform plays at a sane level");
     }
+}
+
+void testSynthExtras()
+{
+    vox::CarrierSynth synth;
+    synth.prepare (sr);
+    vox::CarrierSynth::Settings s;
+    s.noise = 0.0f;
+    s.waveform = vox::Waveform::pulse;
+    s.pulseWidth = 0.1f;
+    s.pwmDepth = 1.0f;
+    s.osc2Level = 1.0f;
+    s.osc2Wave = vox::Waveform::triangle;
+    s.subLevel = 1.0f;
+    s.vibratoCents = 50.0f;
+    s.glideMs = 200.0f;
+    synth.setSettings (s);
+
+    bool finite = true;
+    double level = 0.0;
+    for (int note : { 48, 55, 60, 67 })
+    {
+        synth.noteOn (note, 1.0f);
+        level = std::max (level, rms ([&] {
+            const float y = synth.process();
+            finite = finite && std::isfinite (y);
+            return y;
+        }, 9600));
+    }
+    check (finite && level > 0.2 && level < 2.0, "second oscillator, sub, PWM, glide and vibrato stay at a sane level");
+
+    // Glide: right after a jump the pitch is still near the old note.
+    vox::CarrierSynth g;
+    g.prepare (sr);
+    vox::CarrierSynth::Settings gs;
+    gs.noise = 0.0f;
+    gs.glideMs = 300.0f;
+    g.setSettings (gs);
+    auto crossings = [&] (int samples)
+    {
+        int count = 0;
+        float last = g.process();
+        for (int i = 0; i < samples; ++i)
+        {
+            const float y = g.process();
+            if (last < 0.0f && y >= 0.0f)
+                ++count;
+            last = y;
+        }
+        return count;
+    };
+    g.noteOn (45, 1.0f); // A2, 110 Hz
+    crossings (24000);
+    g.noteOff (45);
+    g.noteOn (69, 1.0f); // A4, 440 Hz
+    const int early = crossings (2400);   // first 50 ms
+    crossings (48000);
+    const int late = crossings (2400);
+    check (early < late * 3 / 4, "glide slides up instead of jumping");
 }
 
 void testVocoder()
@@ -313,6 +372,7 @@ int main()
 {
     testBandPass();
     testSynth();
+    testSynthExtras();
     testVocoder();
     testGate();
     testArpeggiator();

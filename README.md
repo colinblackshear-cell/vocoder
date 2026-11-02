@@ -42,10 +42,25 @@ You don't need Logic or a MIDI keyboard: the app has its own synth, on-screen ke
    - Type on your computer keyboard: **A S D F G H J K** are the white keys, **W E T Y U** the black keys.
      **Oct -** and **Oct +** move them up or down.
    - Or turn on **Drone (no keys)** in the Carrier section for a single held note.
-4. Sing or talk. Press **Record** to capture what you hear, and **Stop** to save it as a WAV in
-   `Music/Vocoder Recordings`. **Show recordings** opens that folder.
+4. Pick a sound from the **Sound** menu (or step through with **<** and **>**).
+5. Set the **Tempo** and tick **Click** for a metronome. Press **Record**: you get a one-bar count-in,
+   then recording starts exactly on the downbeat. Press **Stop** and it finishes at the end of that bar,
+   so every take is a whole number of bars and loops cleanly in Logic at the same tempo. The click is
+   never recorded. Takes are saved as WAVs in `Music/Vocoder Recordings`; **Files** opens that folder.
+   Pressing **Cancel** during the count-in throws the take away.
+
+Chord buttons change on the next beat by default, so a slightly early or late click still lands in time.
+**Chord Timing** (in the Timing section) switches between Instant, Next Beat and Next Bar.
 
 Your devices and settings are remembered for next time.
+
+## Sounds (presets)
+
+The **Sound** menu (also in Logic's preset menu at the top of the plugin window) has ready-made starting
+points: Init, Classic Robot, French Touch, Choir Pad, Whisper Ghost, Trance Gate, Stutter Chop, Arp Robot,
+Acid Wobble, Auto-Wah Funk, Lo-Fi Radio, Monster, Chipmunk Bot and Space Echo. Choosing one resets the sound
+but leaves your input gain, gate, tempo, metronome, drone and output level alone. Tweak from there; Logic
+saves your changes with the song.
 
 ## Controls
 
@@ -58,7 +73,12 @@ Your devices and settings are remembered for next time.
 | Vocoder | Attack / Release | How fast each band follows your voice. Long release smears words together |
 | Vocoder | Formant Shift | Moves the character of your voice up (smaller, chipmunk) or down (bigger, monster) |
 | Vocoder | Sibilance | Lets your "s" and "t" sounds through so words stay clear |
-| Carrier | Waveform | Saw (bright, classic), Square (hollow), Supersaw (wide, trance) |
+| Carrier | Waveform | Saw (bright, classic), Square (hollow), Supersaw (wide, trance), Pulse (nasal), Triangle (soft) |
+| Carrier | Pulse Width, Pulse Width Motion | Shape of the Pulse wave, and a slow sweep of it for movement |
+| Carrier | Osc 2 Waveform, Tune, Fine, Level | A second oscillator, e.g. +7 for fifths or +12 for an octave |
+| Carrier | Sub Osc Level | A square wave an octave down for weight |
+| Carrier | Glide | Slides between notes |
+| Carrier | Vibrato Rate / Depth | Pitch wobble, for a more human or a seasick sound |
 | Carrier | Octave, Supersaw Detune, Noise | Pitch range, supersaw width, and breathy noise mixed into the synth |
 | Carrier | Carrier Attack / Release | Fade in and out of each note |
 | Carrier | Drone, Drone Note | Holds one note when no keys are pressed |
@@ -66,7 +86,9 @@ Your devices and settings are remembered for next time.
 | Arpeggiator | Arp Rate, Pattern, Octaves | Step length (1/4 to 1/32, triplets), note order (up, down, up/down, random, as played) and range |
 | Arpeggiator | Gate Length, Swing | How long each step sounds, and how much every second step is pushed late |
 | Arpeggiator | Gate Pattern | Rhythm for the gate mode: Straight, Eighths, Offbeats, Trance, Gallop, Stutter, Sparse |
-| Arpeggiator | Tempo (standalone) | Used when there's no DAW. In Logic the arp follows the project tempo and locks to the bar |
+| Timing | Tempo (standalone) | Used when there's no DAW. In Logic everything follows the project tempo and locks to the bar |
+| Timing | Metronome (standalone) | The click, the same as the **Click** box |
+| Timing | Chord Timing | When a chord button change takes effect: Instant, Next Beat or Next Bar |
 | Filter | Filter Type, Cutoff, Resonance | Low pass, high pass, band pass or notch after the vocoder. High resonance whistles |
 | Filter | Filter Drive | Saturates into the filter for a grittier, acid-style sweep |
 | Filter | Voice Follow | Opens (or closes) the filter as you get louder, like an auto-wah |
@@ -97,6 +119,7 @@ The DSP tests also build without JUCE: `cmake -S . -B build -DVOCODER_TESTS_ONLY
 2. ~~Arpeggiator: note arp and rhythm gate, synced to Logic's tempo~~
 3. ~~Filter (cutoff, resonance, drive) and LFO modulation~~
 4. ~~FX chain: distortion, bit crush, chorus, delay, reverb~~
-5. Vocoder styles (presets), unison, chord memory, phaser, limiter
+5. ~~Presets, metronome and bar-exact recording, more synth options~~
 6. ~~Standalone live mode: device pickers, recorder, on-screen keyboard, chord buttons~~
-7. Custom interface, preset browser, MIDI learn
+7. Unison, chord memory, phaser, limiter
+8. Custom interface, user presets, MIDI learn

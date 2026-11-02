@@ -22,6 +22,16 @@ inline constexpr auto carrierAttack = "carrierAttack";
 inline constexpr auto carrierRelease = "carrierRelease";
 inline constexpr auto drone = "drone";
 inline constexpr auto droneNote = "droneNote";
+inline constexpr auto pulseWidth = "pulseWidth";
+inline constexpr auto pwmDepth = "pwmDepth";
+inline constexpr auto osc2Wave = "osc2Wave";
+inline constexpr auto osc2Semitones = "osc2Semitones";
+inline constexpr auto osc2Fine = "osc2Fine";
+inline constexpr auto osc2Level = "osc2Level";
+inline constexpr auto subLevel = "subLevel";
+inline constexpr auto glide = "glide";
+inline constexpr auto vibratoRate = "vibratoRate";
+inline constexpr auto vibratoDepth = "vibratoDepth";
 
 inline constexpr auto arpMode = "arpMode";
 inline constexpr auto arpRate = "arpRate";
@@ -31,6 +41,8 @@ inline constexpr auto arpGate = "arpGate";
 inline constexpr auto arpSwing = "arpSwing";
 inline constexpr auto gatePattern = "gatePattern";
 inline constexpr auto tempo = "tempo";
+inline constexpr auto metronome = "metronome";
+inline constexpr auto chordTiming = "chordTiming";
 
 inline constexpr auto filterMode = "filterMode";
 inline constexpr auto cutoff = "cutoff";
@@ -120,7 +132,7 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     layout.add (std::make_unique<Group> (
         "carrier", "Carrier Synth", "|",
-        choice (ParamIDs::waveform, "Waveform", { "Saw", "Square", "Supersaw" }, 0),
+        choice (ParamIDs::waveform, "Waveform", { "Saw", "Square", "Supersaw", "Pulse", "Triangle" }, 0),
         integer (ParamIDs::octave, "Octave", -2, 2, 0),
         real (ParamIDs::detune, "Supersaw Detune", { 0.0f, 50.0f, 0.1f }, 20.0f, "cents"),
         real (ParamIDs::noise, "Noise", { 0.0f, 1.0f, 0.01f }, 0.05f, ""),
@@ -129,7 +141,17 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         toggle (ParamIDs::drone, "Drone (no keys)", false),
         std::make_unique<AudioParameterInt> (ParameterID { ParamIDs::droneNote, 1 }, "Drone Note", 24, 84, 48,
                                              AudioParameterIntAttributes().withStringFromValueFunction (
-                                                 [] (int v, int) { return MidiMessage::getMidiNoteName (v, true, true, 3); }))));
+                                                 [] (int v, int) { return MidiMessage::getMidiNoteName (v, true, true, 3); })),
+        real (ParamIDs::pulseWidth, "Pulse Width", { 0.05f, 0.95f, 0.01f }, 0.5f, ""),
+        real (ParamIDs::pwmDepth, "Pulse Width Motion", { 0.0f, 1.0f, 0.01f }, 0.0f, ""),
+        choice (ParamIDs::osc2Wave, "Osc 2 Waveform", { "Saw", "Square", "Pulse", "Triangle" }, 0),
+        integer (ParamIDs::osc2Semitones, "Osc 2 Tune", -24, 24, 7),
+        real (ParamIDs::osc2Fine, "Osc 2 Fine", { -50.0f, 50.0f, 0.1f }, 0.0f, "cents"),
+        real (ParamIDs::osc2Level, "Osc 2 Level", { 0.0f, 1.0f, 0.01f }, 0.0f, ""),
+        real (ParamIDs::subLevel, "Sub Osc Level", { 0.0f, 1.0f, 0.01f }, 0.0f, ""),
+        real (ParamIDs::glide, "Glide", skewed (0.0f, 2000.0f, 200.0f), 0.0f, "ms"),
+        real (ParamIDs::vibratoRate, "Vibrato Rate", { 0.5f, 10.0f, 0.01f }, 5.0f, "Hz"),
+        real (ParamIDs::vibratoDepth, "Vibrato Depth", { 0.0f, 100.0f, 0.1f }, 0.0f, "cents")));
 
     layout.add (std::make_unique<Group> (
         "arp", "Arpeggiator", "|",
@@ -140,8 +162,13 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         real (ParamIDs::arpGate, "Arp Gate Length", { 0.05f, 1.0f, 0.01f }, 0.6f, ""),
         real (ParamIDs::arpSwing, "Arp Swing", { 0.0f, 1.0f, 0.01f }, 0.0f, ""),
         choice (ParamIDs::gatePattern, "Gate Pattern",
-                { "Straight", "Eighths", "Offbeats", "Trance", "Gallop", "Stutter", "Sparse" }, 3),
-        real (ParamIDs::tempo, "Tempo (standalone)", { 60.0f, 200.0f, 0.1f }, 120.0f, "BPM")));
+                { "Straight", "Eighths", "Offbeats", "Trance", "Gallop", "Stutter", "Sparse" }, 3)));
+
+    layout.add (std::make_unique<Group> (
+        "timing", "Timing", "|",
+        real (ParamIDs::tempo, "Tempo (standalone)", { 60.0f, 200.0f, 0.1f }, 120.0f, "BPM"),
+        toggle (ParamIDs::metronome, "Metronome (standalone)", false),
+        choice (ParamIDs::chordTiming, "Chord Timing", { "Instant", "Next Beat", "Next Bar" }, 1)));
 
     layout.add (std::make_unique<Group> (
         "filter", "Filter", "|",
