@@ -98,6 +98,7 @@ public:
 private:
     void setOctave (int octave);
     void parentHierarchyChanged() override;
+    void focusForComputerKeys (int attemptsLeft);
 
     VocoderProcessor& processor;
     std::unique_ptr<LiveBar> liveBar;
