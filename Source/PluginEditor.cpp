@@ -439,6 +439,18 @@ bool VocoderEditor::keyStateChanged (bool isKeyDown)
     return liveBar != nullptr && keyboard.keyStateChanged (isKeyDown);
 }
 
+bool VocoderEditor::keyPressed (const juce::KeyPress& key)
+{
+    // Claim the note keys. Unclaimed keys make macOS play its alert sound,
+    // which repeats for as long as a key is held.
+    const auto mods = key.getModifiers();
+    if (liveBar == nullptr || mods.isCommandDown() || mods.isCtrlDown() || mods.isAltDown())
+        return false;
+
+    const auto c = juce::CharacterFunctions::toLowerCase (key.getTextCharacter());
+    return c != 0 && juce::String ("awsedftgyhujkolp;").containsChar (c);
+}
+
 void VocoderEditor::paint (juce::Graphics& g)
 {
     g.fillAll (background);

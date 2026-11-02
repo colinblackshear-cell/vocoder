@@ -94,6 +94,7 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
     bool keyStateChanged (bool isKeyDown) override;
+    bool keyPressed (const juce::KeyPress& key) override;
 
 private:
     void setOctave (int octave);
