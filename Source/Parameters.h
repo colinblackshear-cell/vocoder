@@ -51,6 +51,10 @@ inline constexpr auto tuneSpeed = "tuneSpeed";
 inline constexpr auto tuneAmount = "tuneAmount";
 inline constexpr auto singToPlay = "singToPlay";
 
+inline constexpr auto chordKey = "chordKey";
+inline constexpr auto chordScale = "chordScale";
+inline constexpr auto chordFlavour = "chordFlavour";
+
 inline constexpr auto filterMode = "filterMode";
 inline constexpr auto cutoff = "cutoff";
 inline constexpr auto resonance = "resonance";
@@ -90,6 +94,15 @@ inline constexpr double lfoBeats[] = { 0.0, 16.0, 8.0, 4.0, 2.0, 1.0, 0.5, 0.25 
 inline const juce::StringArray delayNames { "1/2", "1/4 dotted", "1/4", "1/8 dotted", "1/8", "1/16" };
 inline constexpr double delayBeats[] = { 2.0, 1.5, 1.0, 0.75, 0.5, 0.25 };
 } // namespace NoteLengths
+
+// Names for the chord buttons' settings, in vox::Chords order.
+namespace ChordNames
+{
+inline const juce::StringArray scales { "Major", "Minor", "Dorian", "Mixolydian", "Lydian", "Phrygian", "Harmonic Minor" };
+inline const juce::StringArray flavours { "Simple", "Seventh", "Ninth", "Sus2", "Sus4", "Add9", "Sixth", "Power", "Big" };
+// The matching auto-tune scale for each chord scale.
+inline constexpr int tuneScales[] = { 1, 2, 6, 7, 8, 9, 10 };
+} // namespace ChordNames
 
 inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 {
@@ -175,13 +188,17 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         "timing", "Timing", "|",
         real (ParamIDs::tempo, "Tempo (standalone)", { 60.0f, 200.0f, 0.1f }, 120.0f, "BPM"),
         toggle (ParamIDs::metronome, "Metronome (standalone)", false),
-        choice (ParamIDs::chordTiming, "Chord Timing", { "Instant", "Next Beat", "Next Bar" }, 1)));
+        choice (ParamIDs::chordTiming, "Chord Timing", { "Instant", "Next Beat", "Next Bar" }, 1),
+        choice (ParamIDs::chordKey, "Chord Key", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, 0),
+        choice (ParamIDs::chordScale, "Chord Scale", ChordNames::scales, 1),
+        choice (ParamIDs::chordFlavour, "Chord Type", ChordNames::flavours, 0)));
 
     layout.add (std::make_unique<Group> (
         "autotune", "Auto-Tune", "|",
         toggle (ParamIDs::tuneOn, "Auto-Tune", false),
         choice (ParamIDs::tuneKey, "Key", { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, 0),
-        choice (ParamIDs::tuneScale, "Scale", { "Chromatic", "Major", "Minor", "Major Pentatonic", "Minor Pentatonic", "Blues" }, 0),
+        choice (ParamIDs::tuneScale, "Scale", { "Chromatic", "Major", "Minor", "Major Pentatonic", "Minor Pentatonic", "Blues",
+                                                             "Dorian", "Mixolydian", "Lydian", "Phrygian", "Harmonic Minor" }, 0),
         real (ParamIDs::tuneSpeed, "Retune Speed", skewed (0.0f, 200.0f, 30.0f), 15.0f, "ms"),
         real (ParamIDs::tuneAmount, "Tune Amount", { 0.0f, 1.0f, 0.01f }, 1.0f, ""),
         choice (ParamIDs::singToPlay, "Sing to Play", { "Off", "Melody", "Melody + Third", "Full Chord" }, 0)));

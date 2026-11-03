@@ -44,7 +44,7 @@ public:
     juce::MidiKeyboardState keyboardState; // the on-screen keyboard
     Recorder recorder;
 
-    // Chord buttons: up to 4 notes that replace the previous chord at the next
+    // Chord buttons: up to 6 notes that replace the previous chord at the next
     // beat or bar (per Chord Timing). An empty chord stops. Message thread only.
     void requestChord (const juce::Array<int>& notes, bool immediate = false);
 
@@ -107,7 +107,7 @@ private:
     std::atomic<uint64_t> pendingChord { 0 };
     uint64_t queuedChord = 0;
     double chordApplyAt = 0.0;
-    std::array<int, 4> chordNotes {};
+    std::array<int, 6> chordNotes {};
     int chordCount = 0;
 
     bool takeScheduled = false, stopScheduled = false;

@@ -1,6 +1,7 @@
 // Plain C++ tests for the DSP code. No JUCE needed, so they build in seconds.
 #include "../Source/dsp/Arpeggiator.h"
 #include "../Source/dsp/AutoTune.h"
+#include "../Source/dsp/Chords.h"
 #include "../Source/dsp/CarrierSynth.h"
 #include "../Source/dsp/Effects.h"
 #include "../Source/dsp/Filter.h"
@@ -494,6 +495,51 @@ void testAutoTune()
                && vox::Scales::stepsAbove (57, 4, 9, 2) == 64,
            "harmony steps follow the scale (C-E, D-F, A-E)");
 }
+void testChords()
+{
+    using C = vox::Chords;
+    auto names = [] (int key, int scale, int flavour)
+    {
+        std::string all;
+        for (int d = 0; d < 7; ++d)
+            all += (d > 0 ? " " : "") + C::name (key, scale, d, flavour);
+        return all;
+    };
+    struct Case { int key, scale, flavour; const char* want; };
+    const Case cases[] = {
+        { 0, 0, C::triad,   "C Dm Em F G Am Bdim" },
+        { 9, 1, C::triad,   "Am Bdim C Dm Em F G" },
+        { 0, 0, C::seventh, "Cmaj7 Dm7 Em7 Fmaj7 G7 Am7 Bm7b5" },
+        { 2, 2, C::triad,   "Dm Em F G Am Bdim C" },          // D Dorian
+        { 7, 3, C::triad,   "G Am Bdim C Dm Em F" },          // G Mixolydian
+        { 9, 6, C::triad,   "Am Bdim Caug Dm E F Abdim" },    // A harmonic minor
+        { 0, 0, C::sus4,    "Csus4 Dsus4 Esus4 Fsus#4 Gsus4 Asus4 Bsus4b5" },
+        { 0, 0, C::power,   "C5 D5 E5 F5 G5 A5 B5" },
+        { 0, 0, C::add9,    "Cadd9 Dmadd9 Emadd9 Fadd9 Gadd9 Amadd9 Bdimadd9" },
+        { 0, 0, C::ninth,   "Cmaj9 Dm9 Em9 Fmaj9 G9 Am9 Bm9b5" },
+    };
+    for (const auto& c : cases)
+    {
+        const auto got = names (c.key, c.scale, c.flavour);
+        char what[200];
+        std::snprintf (what, sizeof what, "chords: %s (got %s)", c.want, got.c_str());
+        check (got == c.want, what);
+    }
+
+    // Every chord has 2-6 notes in a playable range, with the root in C3-B3 (except the low root of "big").
+    bool ok = true;
+    for (int key = 0; key < 12; ++key)
+        for (int scale = 0; scale < C::numScales; ++scale)
+            for (int flavour = 0; flavour < C::numFlavours; ++flavour)
+                for (int d = 0; d < 7; ++d)
+                {
+                    const auto n = C::build (key, scale, d, flavour);
+                    const int root = flavour == C::big ? n[1] : n[0];
+                    ok = ok && n.size() >= 2 && n.size() <= (size_t) C::maxNotes && root >= 48 && root < 60
+                         && *std::min_element (n.begin(), n.end()) >= 36 && *std::max_element (n.begin(), n.end()) <= 84;
+                }
+    check (ok, "every chord in every key, scale and flavour is in range");
+}
 } // namespace
 
 int main()
@@ -507,6 +553,7 @@ int main()
     testFilter();
     testEffects();
     testAutoTune();
+    testChords();
     std::printf ("\n%s\n", failures == 0 ? "All tests passed" : "Some tests failed");
     return failures == 0 ? 0 : 1;
 }

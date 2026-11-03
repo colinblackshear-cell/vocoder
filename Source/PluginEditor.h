@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Look.h"
+#include "EasyPanel.h"
 #include "MainPanel.h"
 #include "PluginProcessor.h"
 
@@ -69,24 +70,29 @@ private:
     juce::MidiKeyboardState& keyState;
 };
 
-// One-click chords in a chosen key, for playing without a MIDI keyboard.
+// One-click chords in a chosen key, scale and chord type, for playing
+// without a MIDI keyboard.
 class ChordPad : public juce::Component
 {
 public:
     ChordPad (VocoderProcessor& processor, LatchKeyboard& keyboard);
     void resized() override;
+    void paint (juce::Graphics&) override;
     void stopAll();
 
 private:
-    static constexpr int numChords = 6;
+    static constexpr int numChords = 7;
 
     void relabel();
     void toggleChord (int index);
+    void settingsChanged();
     juce::Array<int> notesFor (int index) const;
 
     VocoderProcessor& processor;
     LatchKeyboard& keyboard;
-    juce::ComboBox keyBox, scaleBox;
+    juce::Label keyLabel { {}, "Key" }, scaleLabel { {}, "Scale" }, flavourLabel { {}, "Chord type" };
+    juce::ComboBox keyBox, scaleBox, flavourBox;
+    juce::AudioProcessorValueTreeState::ComboBoxAttachment keyAttachment, scaleAttachment, flavourAttachment;
     juce::TextButton chordButtons[numChords];
     juce::ToggleButton holdButton { "Hold keys" };
     juce::TextButton stopButton { "Stop all" };
@@ -101,7 +107,9 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
 
-    juce::TextButton advancedButton { "Advanced" };
+    // Easy, Studio, Advanced.
+    juce::TextButton viewButtons[3] { juce::TextButton ("Easy"), juce::TextButton ("Studio"), juce::TextButton ("Advanced") };
+    std::function<void (int)> onViewChosen;
 
 private:
     void timerCallback() override;
@@ -129,13 +137,14 @@ private:
     void parentHierarchyChanged() override;
     void focusForComputerKeys (int attemptsLeft);
 
-    void showAdvanced (bool advanced);
+    void showView (int view); // 0 Easy, 1 Studio, 2 Advanced
 
     VocoderLook look;
     juce::TooltipWindow tooltips { this, 600 };
     VocoderProcessor& processor;
     std::unique_ptr<LiveBar> liveBar;
     PresetBar presetBar;
+    EasyPanel easyPanel;
     MainPanel mainPanel;
     juce::GenericAudioProcessorEditor controls;
     LatchKeyboard keyboard;

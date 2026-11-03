@@ -1,6 +1,8 @@
 // Runs the whole plugin offline with every section switched on, checking the
 // output stays finite, audible and under full scale.
 #include "../Source/PluginProcessor.h"
+#include "../Source/EasySteps.h"
+#include "../Source/dsp/Chords.h"
 
 #include <cstdio>
 #include <memory>
@@ -119,6 +121,43 @@ int main()
         const float peak = run (proc, 400, finite);
         check (finite && peak > 0.01f && peak <= 1.0f && proc.getCurrentProgram() == program,
                "preset " + proc.getProgramName (program) + ": peak " + juce::String (peak, 3));
+    }
+
+    // Easy mode: every tile in every step gives a sound that's audible, finite and under full scale,
+    // and the tile shows as picked afterwards.
+    for (const auto& step : EasySteps::all())
+        for (const auto& tile : step.tiles)
+        {
+            VocoderProcessor proc;
+            proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
+            proc.prepareToPlay (sampleRate, blockSize);
+            EasySteps::apply (proc.params, step, tile);
+            const bool active = EasySteps::isActive (proc.params, step, tile);
+            std::vector<int> chord = vox::Chords::build (0, 1, 0, (int) proc.params.getRawParameterValue ("chordFlavour")->load());
+            juce::Array<int> notes;
+            for (int n : chord)
+                notes.add (n);
+            proc.requestChord (notes, true);
+            bool finite = true;
+            const float peak = run (proc, 300, finite);
+            check (finite && active && peak > 0.01f && peak <= 1.0f,
+                   juce::String ("easy ") + step.title + " / " + tile.name + ": peak " + juce::String (peak, 3)
+                       + (active ? "" : " (tile not lit)"));
+        }
+
+    // Effects tiles switch off again, back to the defaults.
+    {
+        VocoderProcessor proc;
+        const auto& fx = EasySteps::all()[3];
+        bool ok = true;
+        for (const auto& tile : fx.tiles)
+        {
+            EasySteps::apply (proc.params, fx, tile);
+            ok = ok && EasySteps::isActive (proc.params, fx, tile);
+            EasySteps::apply (proc.params, fx, tile);
+            ok = ok && ! EasySteps::isActive (proc.params, fx, tile);
+        }
+        check (ok, "easy effects tiles turn on and off");
     }
 
     // Presets leave performance settings alone and reset the rest.

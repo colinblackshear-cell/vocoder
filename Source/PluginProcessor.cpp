@@ -236,9 +236,9 @@ void VocoderProcessor::updateSungNotes (int mode)
 void VocoderProcessor::requestChord (const juce::Array<int>& notes, bool immediate)
 {
     // Packed so the audio thread can take it with one atomic exchange:
-    // bit 63 = present, bit 62 = immediate, bits 0-7 = count, then one byte per note.
+    // bit 63 = present, bit 62 = immediate, bits 0-7 = count, then one byte per note (up to 6).
     uint64_t packed = (uint64_t { 1 } << 63) | (immediate ? uint64_t { 1 } << 62 : 0);
-    const int count = juce::jmin (4, notes.size());
+    const int count = juce::jmin (6, notes.size());
     packed |= (uint64_t) count;
     for (int i = 0; i < count; ++i)
         packed |= (uint64_t) (notes[i] & 0x7f) << (8 * (i + 1));
@@ -269,7 +269,7 @@ void VocoderProcessor::applyChord()
     for (int i = 0; i < chordCount; ++i)
         arp.noteOff (chordNotes[(size_t) i], synth);
 
-    chordCount = (int) (queuedChord & 0xff);
+    chordCount = juce::jmin ((int) chordNotes.size(), (int) (queuedChord & 0xff));
     for (int i = 0; i < chordCount; ++i)
     {
         chordNotes[(size_t) i] = (int) ((queuedChord >> (8 * (i + 1))) & 0x7f);

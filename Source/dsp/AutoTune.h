@@ -128,7 +128,7 @@ private:
 // Musical scales for snapping, as 12-bit masks (bit 0 = the key's root).
 struct Scales
 {
-    static constexpr int count = 6;
+    static constexpr int count = 11;
     static constexpr int masks[count] = {
         0b111111111111, // Chromatic
         0b101010110101, // Major
@@ -136,6 +136,11 @@ struct Scales
         0b001010010101, // Major pentatonic
         0b010010101001, // Minor pentatonic
         0b010011101001, // Blues
+        0b011010101101, // Dorian
+        0b011010110101, // Mixolydian
+        0b101011010101, // Lydian
+        0b010110101011, // Phrygian
+        0b100110101101, // Harmonic minor
     };
 
     static bool contains (int scale, int key, int note)
