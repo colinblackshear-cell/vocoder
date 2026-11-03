@@ -28,7 +28,7 @@ inline const std::vector<Preset>& all()
 {
     using namespace ParamIDs;
     static const std::vector<Preset> presets {
-        { "Start", "Init", {} },
+        { "Start", "Raw Voice", {} },
 
         { "Robots", "Classic Robot",
           { { waveform, Wave::saw }, { bands, 16 }, { sharpness, 1.6f }, { release, 40 }, { noise, 0.05f },
@@ -179,8 +179,23 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Preset& pres
             if (! keepsValue (p->getParameterID()))
                 p->setValueNotifyingHost (p->getDefaultValue());
 
-    for (const auto& [id, value] : preset.values)
+    // Every preset but Raw Voice is built on the robot. Your own voice stays off
+    // unless the preset asks for it, and the rhythm switches on when the preset uses the arp.
+    auto set = [&state] (const char* id, float value)
+    {
         if (auto* p = state.getParameter (id))
             p->setValueNotifyingHost (p->convertTo0to1 (value));
+    };
+    if (! preset.values.empty())
+    {
+        set (ParamIDs::robotOn, 1.0f);
+        set (ParamIDs::voiceOn, 0.0f);
+    }
+    for (const auto& [id, value] : preset.values)
+    {
+        set (id, value);
+        if (juce::String (id) == ParamIDs::arpMode && value > 0.5f)
+            set (ParamIDs::arpOn, 1.0f);
+    }
 }
 } // namespace Presets

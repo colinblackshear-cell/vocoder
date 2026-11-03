@@ -145,7 +145,7 @@ void EasyPanel::buildStep()
             knob (reverbMix, "Space", "How big the room is");
             knob (chorusMix, "Wide", "How wide the sound is");
             knob (drive, "Crunch", "How gritty");
-            knob (voiceLevel, "Your voice", "How loud your own voice is (switch it on under Hear)");
+            knob (voiceLevel, "Your voice", "How loud your own voice is");
             break;
         default:
             extras.push_back (std::make_unique<TunerDisplay> (processor));

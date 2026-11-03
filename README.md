@@ -65,13 +65,19 @@ Pick a view at the top right:
 - **Studio** shows the main controls as knobs in coloured sections.
 - **Advanced** shows every setting as a list.
 
-The **Hear** bar above the chord buttons switches each part on and off, so you can hear it alone:
+A new Vocoder starts as just your **raw voice**. The **Your sound** bar above the chord buttons shows the
+chain your voice flows through, and each part switches on and off on its own:
 
-- **Robot** is the vocoder: your words, played by the synth on the notes of your chord.
-- **Your voice** is your own voice, auto-tuned when Auto-Tune is on. Switch Robot off to hear just the auto-tune.
-- **Effects** turns echo, reverb, chorus and distortion on or off for whatever you're hearing.
+**Your voice → Auto-Tune → Robot → Rhythm → Effects**
 
-The sliders next to Robot and Your voice set their levels.
+- **Your voice** is your own voice from the mic (auto-tuned when Auto-Tune is on).
+- **Auto-Tune** snaps your voice to the notes of the key.
+- **Robot** is the vocoder: your words, played by the synth on the notes of your chord. It needs notes.
+- **Rhythm** chops everything into a beat (Rhythm Gate), or arpeggiates the robot's chord (Note Arp).
+- **Effects** adds echo, reverb, chorus and distortion to everything.
+
+Mix and match: auto-tune only, auto-tune and rhythm, robot and effects, and so on. The sliders next to
+Your voice and Robot set their levels. Presets switch on the parts they use.
 
 Hover over any control for a tip, and double-click a knob to reset it. The view you pick is saved with the song.
 
@@ -93,7 +99,7 @@ of that scale, named like Cm7 or Fmaj7. Changing the type while a chord plays sw
 ## Sounds (presets)
 
 The **Sound** menu (also in Logic's preset menu at the top of the plugin window) has ready-made starting
-points: Init, Classic Robot, French Touch, Choir Pad, Whisper Ghost, Trance Gate, Stutter Chop, Arp Robot,
+points: Raw Voice, Classic Robot, French Touch, Choir Pad, Whisper Ghost, Trance Gate, Stutter Chop, Arp Robot,
 Acid Wobble, Auto-Wah Funk, Lo-Fi Radio, Monster, Chipmunk Bot, Space Echo, Hard Tune, Sing the Synth,
 Harmony Choir, Talk Box Funk, 80s Synth Pop, Underwater, Glitch Bot, Cathedral, Ice Crystal, Lullaby,
 Disco Bounce, Gallop Rider, Dubstep Growl and Pop Star, grouped by category. Choosing one resets the sound but leaves your input gain, gate, tempo, metronome, key, scale,
@@ -138,7 +144,7 @@ saves your changes with the song.
 | Effects | Chorus Mix, Rate, Depth | Widens the sound in stereo |
 | Effects | Delay Mix, Time, Feedback, Ping-Pong | Tempo-synced echoes, bouncing left and right |
 | Effects | Reverb Mix, Size, Damping | Space, from a small room to a huge hall |
-| Output | Hear Robot, Hear Your Voice, Effects On | Switch each part on or off to hear it alone |
+| Output | Your Voice On, Robot On, Rhythm On, Effects On | Switch each part of the chain on or off |
 | Output | Robot Level, Voice Level, Output Gain | Levels for the robot and your (tuned) voice, and the final level (soft-clipped so it can't blast) |
 
 ## Build from source

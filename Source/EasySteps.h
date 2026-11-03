@@ -34,31 +34,32 @@ inline const std::vector<Step>& all()
     using namespace ParamIDs;
     static const std::vector<Step> steps {
         { "Voice",
-          "Pick a robot voice, put on headphones and sing or talk. Click a chord at the bottom to give the robot notes.",
-          { bands, sharpness, attack, release, formant, sibilance, waveform, octave, detune, noise, carrierAttack,
+          "Start with your raw voice, or pick a robot. Robots need notes: click a chord at the bottom.",
+          { robotOn, bands, sharpness, attack, release, formant, sibilance, waveform, octave, detune, noise, carrierAttack,
             carrierRelease, pulseWidth, pwmDepth, osc2Wave, osc2Semitones, osc2Fine, osc2Level, subLevel, glide,
             vibratoRate, vibratoDepth },
           {
-              { "Robot", "The classic talking machine", { { bands, 16 }, { sharpness, 1.6f }, { release, 40 } } },
+              { "Raw", "Just your own voice, no robot", { { robotOn, 0 } } },
+              { "Robot", "The classic talking machine", { { robotOn, 1 }, { bands, 16 }, { sharpness, 1.6f }, { release, 40 } } },
               { "Daft", "Smooth French disco robot",
-                { { waveform, 2 }, { detune, 14 }, { bands, 24 }, { attack, 3 }, { release, 50 }, { osc2Semitones, 12 },
+                { { robotOn, 1 }, { waveform, 2 }, { detune, 14 }, { bands, 24 }, { attack, 3 }, { release, 50 }, { osc2Semitones, 12 },
                   { osc2Level, 0.3f }, { glide, 40 } } },
               { "Choir", "A huge, soft group of singers",
-                { { waveform, 2 }, { detune, 30 }, { bands, 32 }, { sharpness, 2 }, { attack, 15 }, { release, 250 },
+                { { robotOn, 1 }, { waveform, 2 }, { detune, 30 }, { bands, 32 }, { sharpness, 2 }, { attack, 15 }, { release, 250 },
                   { carrierAttack, 300 }, { carrierRelease, 1500 }, { vibratoRate, 4.5f }, { vibratoDepth, 12 } } },
               { "Whisper", "Breathy and spooky",
-                { { waveform, 4 }, { noise, 0.8f }, { sibilance, 0.8f }, { formant, 3 }, { bands, 28 } } },
+                { { robotOn, 1 }, { waveform, 4 }, { noise, 0.8f }, { sibilance, 0.8f }, { formant, 3 }, { bands, 28 } } },
               { "Monster", "Deep, big and scary",
-                { { octave, -1 }, { formant, -7 }, { osc2Wave, 1 }, { osc2Semitones, -12 }, { osc2Level, 0.5f },
+                { { robotOn, 1 }, { octave, -1 }, { formant, -7 }, { osc2Wave, 1 }, { osc2Semitones, -12 }, { osc2Level, 0.5f },
                   { subLevel, 0.8f } } },
               { "Chipmunk", "Tiny and squeaky",
-                { { waveform, 3 }, { pulseWidth, 0.25f }, { octave, 1 }, { formant, 7 }, { glide, 60 },
+                { { robotOn, 1 }, { waveform, 3 }, { pulseWidth, 0.25f }, { octave, 1 }, { formant, 7 }, { glide, 60 },
                   { vibratoRate, 7 }, { vibratoDepth, 25 } } },
               { "Alien", "Wobbly visitor from space",
-                { { waveform, 3 }, { pulseWidth, 0.2f }, { pwmDepth, 0.6f }, { formant, 4 }, { osc2Semitones, 6 },
+                { { robotOn, 1 }, { waveform, 3 }, { pulseWidth, 0.2f }, { pwmDepth, 0.6f }, { formant, 4 }, { osc2Semitones, 6 },
                   { osc2Level, 0.4f }, { vibratoRate, 8 }, { vibratoDepth, 40 } } },
               { "Retro Game", "8-bit video game sound",
-                { { waveform, 1 }, { bands, 12 }, { octave, 1 }, { release, 20 }, { osc2Wave, 1 }, { osc2Semitones, 12 },
+                { { robotOn, 1 }, { waveform, 1 }, { bands, 12 }, { octave, 1 }, { release, 20 }, { osc2Wave, 1 }, { osc2Semitones, 12 },
                   { osc2Level, 0.3f } } },
           } },
 
@@ -77,20 +78,20 @@ inline const std::vector<Step>& all()
           } },
 
         { "Rhythm",
-          "Add movement. Arps play your chord one note at a time; gates chop your voice into a beat.",
-          { arpMode, arpRate, arpPattern, arpOctaves, arpGate, arpSwing, gatePattern },
+          "Add movement. Gates chop your voice into a beat, even without the robot; arps play the robot's chord one note at a time.",
+          { arpOn, arpMode, arpRate, arpPattern, arpOctaves, arpGate, arpSwing, gatePattern },
           {
               { "Off", "Just your voice and the chord", {} },
-              { "Climb", "Notes go up, over and over", { { arpMode, 1 }, { arpRate, 3 }, { arpGate, 0.6f } } },
+              { "Climb", "Notes go up, over and over", { { arpOn, 1 }, { arpMode, 1 }, { arpRate, 3 }, { arpGate, 0.6f } } },
               { "Bounce", "Up and down across two octaves",
-                { { arpMode, 1 }, { arpRate, 3 }, { arpPattern, 2 }, { arpOctaves, 2 }, { arpGate, 0.5f } } },
+                { { arpOn, 1 }, { arpMode, 1 }, { arpRate, 3 }, { arpPattern, 2 }, { arpOctaves, 2 }, { arpGate, 0.5f } } },
               { "Sparkle", "Random notes, fast and twinkly",
-                { { arpMode, 1 }, { arpRate, 4 }, { arpPattern, 3 }, { arpOctaves, 2 }, { arpGate, 0.4f } } },
+                { { arpOn, 1 }, { arpMode, 1 }, { arpRate, 4 }, { arpPattern, 3 }, { arpOctaves, 2 }, { arpGate, 0.4f } } },
               { "Swing", "Laid-back eighth notes",
-                { { arpMode, 1 }, { arpRate, 1 }, { arpPattern, 2 }, { arpSwing, 0.5f }, { arpGate, 0.7f } } },
-              { "Trance", "The classic dance-floor chop", { { arpMode, 2 }, { gatePattern, 3 }, { arpRate, 3 }, { arpGate, 0.5f } } },
-              { "Stutter", "Glitchy stops and starts", { { arpMode, 2 }, { gatePattern, 5 }, { arpRate, 3 }, { arpGate, 0.7f } } },
-              { "Gallop", "Like a running horse", { { arpMode, 2 }, { gatePattern, 4 }, { arpRate, 3 }, { arpGate, 0.6f } } },
+                { { arpOn, 1 }, { arpMode, 1 }, { arpRate, 1 }, { arpPattern, 2 }, { arpSwing, 0.5f }, { arpGate, 0.7f } } },
+              { "Trance", "The classic dance-floor chop", { { arpOn, 1 }, { arpMode, 2 }, { gatePattern, 3 }, { arpRate, 3 }, { arpGate, 0.5f } } },
+              { "Stutter", "Glitchy stops and starts", { { arpOn, 1 }, { arpMode, 2 }, { gatePattern, 5 }, { arpRate, 3 }, { arpGate, 0.7f } } },
+              { "Gallop", "Like a running horse", { { arpOn, 1 }, { arpMode, 2 }, { gatePattern, 4 }, { arpRate, 3 }, { arpGate, 0.6f } } },
           } },
 
         { "Effects",
@@ -107,7 +108,7 @@ inline const std::vector<Step>& all()
           true },
 
         { "Auto-Tune",
-          "Auto-tune fixes the pitch of your own voice (switch on Your voice under Hear). Sing to Play lets your singing play the robot.",
+          "Auto-tune fixes the pitch of your own voice (Your voice, in the bar at the bottom). Sing to Play lets your singing play the robot.",
           { tuneOn, tuneSpeed, tuneAmount, singToPlay },
           {
               { "Off", "Your voice as it is", {} },
@@ -176,6 +177,8 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Step& step, 
         const bool on = ! isActive (state, step, tile);
         for (const auto& [id, v] : tile.values)
             on ? set (state, id, v) : setDefault (state, id);
+        if (on)
+            set (state, ParamIDs::fxOn, 1.0f);
         return;
     }
 
@@ -191,9 +194,11 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Step& step, 
         const int scale = juce::jlimit (0, 6, (int) value (state, ParamIDs::chordScale));
         set (state, ParamIDs::tuneScale, (float) ChordNames::tuneScales[scale]);
 
-        // Correcting your voice only makes sense if you can hear it.
+        // Correcting your voice only makes sense if you can hear it; Sing to Play needs the robot.
         if (value (state, ParamIDs::singToPlay) < 0.5f)
             set (state, ParamIDs::voiceOn, 1.0f);
+        else
+            set (state, ParamIDs::robotOn, 1.0f);
     }
 }
 } // namespace EasySteps

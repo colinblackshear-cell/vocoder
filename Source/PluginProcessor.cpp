@@ -133,7 +133,7 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     const double beatsPerSample = timing.bpm / 60.0 / sampleRate;
 
     vox::Arpeggiator::Settings as;
-    as.mode = (vox::ArpMode) index (params, ParamIDs::arpMode);
+    as.mode = raw (params, ParamIDs::arpOn) > 0.5f ? (vox::ArpMode) index (params, ParamIDs::arpMode) : vox::ArpMode::off;
     as.pattern = (vox::ArpPattern) index (params, ParamIDs::arpPattern);
     as.octaves = index (params, ParamIDs::arpOctaves);
     as.gate = raw (params, ParamIDs::arpGate);
@@ -439,7 +439,8 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         wet = filter.process (wet);
 
         // The robot and your own voice meet here, and share the effects.
-        float sound = wet * robotGain.getNextValue() + voice * voiceGain.getNextValue();
+        // The rhythm gate chops your own voice too, so it works without the robot.
+        float sound = wet * robotGain.getNextValue() + voice * voiceGain.getNextValue() * arpGain;
         if (fxOn)
             sound = distortion.process (sound);
 

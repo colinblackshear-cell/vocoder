@@ -301,12 +301,14 @@ ListenBar::ListenBar (VocoderProcessor& p)
     addAndMakeVisible (title);
 
     struct Info { const char* id; const char* name; const char* tip; juce::Colour colour; };
-    const Info info[] = {
-        { ParamIDs::robotOn, "Robot", "The vocoder: your words, played by the synth on the notes of your chord", Palette::voice },
-        { ParamIDs::voiceOn, "Your voice", "Your own voice. With Auto-Tune on, this is where you hear the correction", Palette::tune },
-        { ParamIDs::fxOn, "Effects", "Echo, reverb, chorus and distortion on whatever you're hearing", Palette::fx },
+    const Info info[numParts] = {
+        { ParamIDs::voiceOn, "Your voice", "Your own voice, straight from the mic (auto-tuned when Auto-Tune is on)", Palette::tune },
+        { ParamIDs::tuneOn, "Auto-Tune", "Snaps your voice to the notes of the key", Palette::tune.interpolatedWith (Palette::synth, 0.5f) },
+        { ParamIDs::robotOn, "Robot", "The vocoder: your words played by the synth, on the notes of your chord", Palette::voice },
+        { ParamIDs::arpOn, "Rhythm", "The rhythm gate chops your sound into a beat; the note arp plays the robot's chord", Palette::arp },
+        { ParamIDs::fxOn, "Effects", "Echo, reverb, chorus and distortion on everything", Palette::fx },
     };
-    for (int i = 0; i < 3; ++i)
+    for (int i = 0; i < numParts; ++i)
     {
         auto& b = parts[i].button;
         b.setButtonText (info[i].name);
@@ -326,23 +328,18 @@ ListenBar::ListenBar (VocoderProcessor& p)
         s->setWantsKeyboardFocus (false);
         addAndMakeVisible (*s);
     }
-    robotLevel.setTooltip ("Robot level");
     voiceLevel.setTooltip ("Your voice level");
-    VocoderLook::setAccent (robotLevel, Palette::voice);
+    robotLevel.setTooltip ("Robot level");
     VocoderLook::setAccent (voiceLevel, Palette::tune);
-    robotLevel.setColour (juce::Slider::trackColourId, Palette::voice);
+    VocoderLook::setAccent (robotLevel, Palette::voice);
     voiceLevel.setColour (juce::Slider::trackColourId, Palette::tune);
+    robotLevel.setColour (juce::Slider::trackColourId, Palette::voice);
 
     // A part's level slider fades while the part is switched off.
-    parts[0].button.onStateChange = [this] { robotLevel.setAlpha (parts[0].button.getToggleState() ? 1.0f : 0.35f); };
-    parts[1].button.onStateChange = [this] { voiceLevel.setAlpha (parts[1].button.getToggleState() ? 1.0f : 0.35f); };
+    parts[0].button.onStateChange = [this] { voiceLevel.setAlpha (parts[0].button.getToggleState() ? 1.0f : 0.35f); };
+    parts[2].button.onStateChange = [this] { robotLevel.setAlpha (parts[2].button.getToggleState() ? 1.0f : 0.35f); };
     parts[0].button.onStateChange();
-    parts[1].button.onStateChange();
-
-    hint.setText ("Switch parts off to hear each one alone", juce::dontSendNotification);
-    hint.setFont (juce::FontOptions (12.0f));
-    hint.setColour (juce::Label::textColourId, Palette::dim);
-    addAndMakeVisible (hint);
+    parts[2].button.onStateChange();
 }
 
 void ListenBar::paint (juce::Graphics& g)
@@ -350,21 +347,43 @@ void ListenBar::paint (juce::Graphics& g)
     g.fillAll (Palette::panel);
     g.setColour (Palette::panelEdge);
     g.fillRect (0, 0, getWidth(), 1);
+
+    // Arrows between the modules, showing the order the sound flows through them.
+    g.setColour (Palette::dim);
+    for (int i = 0; i + 1 < numParts; ++i)
+    {
+        auto from = parts[i].button.getBounds();
+        if (i == 0)
+            from = from.getUnion (voiceLevel.getBounds());
+        if (i == 2)
+            from = from.getUnion (robotLevel.getBounds());
+        const float x0 = (float) from.getRight() + 3.0f, x1 = (float) parts[i + 1].button.getX() - 3.0f;
+        const float y = (float) from.getCentreY();
+        juce::Path arrow;
+        arrow.startNewSubPath (x0, y);
+        arrow.lineTo (x1, y);
+        g.strokePath (arrow, juce::PathStrokeType (1.5f));
+        juce::Path head;
+        head.addTriangle (x1, y, x1 - 5.0f, y - 3.5f, x1 - 5.0f, y + 3.5f);
+        g.fillPath (head);
+    }
 }
 
 void ListenBar::resized()
 {
     auto area = getLocalBounds().reduced (10, 6);
-    title.setBounds (area.removeFromLeft (44));
+    title.setBounds (area.removeFromLeft (80));
 
-    // Robot [level]  Your voice [level]  Effects
-    parts[0].button.setBounds (area.removeFromLeft (80));
-    robotLevel.setBounds (area.removeFromLeft (110).reduced (4, 0));
-    area.removeFromLeft (8);
-    parts[1].button.setBounds (area.removeFromLeft (96));
-    voiceLevel.setBounds (area.removeFromLeft (110).reduced (4, 0));
-    area.removeFromLeft (8);
-    parts[2].button.setBounds (area.removeFromLeft (80));
-    area.removeFromLeft (12);
-    hint.setBounds (area);
+    const int gap = 22;
+    const int sliderWidth = juce::jlimit (50, 100, (area.getWidth() - 5 * 92 - 4 * gap) / 2);
+    const int buttonWidth = juce::jmin (100, (area.getWidth() - 2 * sliderWidth - 4 * gap) / numParts);
+    for (int i = 0; i < numParts; ++i)
+    {
+        parts[i].button.setBounds (area.removeFromLeft (buttonWidth));
+        if (i == 0)
+            voiceLevel.setBounds (area.removeFromLeft (sliderWidth).reduced (4, 0));
+        if (i == 2)
+            robotLevel.setBounds (area.removeFromLeft (sliderWidth).reduced (4, 0));
+        area.removeFromLeft (gap);
+    }
 }

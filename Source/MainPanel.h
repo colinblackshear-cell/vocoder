@@ -90,8 +90,9 @@ private:
         mix { "MIX", Palette::mix };
 };
 
-// Switch the robot, your own voice and the effects on and off, so you can
-// hear each part on its own. Shown in every view.
+// Your sound as a chain of modules: Your voice, Auto-Tune, Robot, Rhythm,
+// Effects. Each switches on and off on its own, so you can start from your
+// raw voice and add only what you want. Shown in every view.
 class ListenBar : public juce::Component
 {
 public:
@@ -100,15 +101,16 @@ public:
     void paint (juce::Graphics&) override;
 
 private:
+    static constexpr int numParts = 5;
+
     struct Part
     {
         juce::TextButton button;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
     };
 
-    juce::Label title { {}, "Hear" };
-    Part parts[3];
+    juce::Label title { {}, "Your sound" };
+    Part parts[numParts];
     juce::Slider robotLevel, voiceLevel;
     juce::AudioProcessorValueTreeState::SliderAttachment robotAttachment, voiceAttachment;
-    juce::Label hint;
 };
