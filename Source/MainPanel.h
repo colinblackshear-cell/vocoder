@@ -89,3 +89,26 @@ private:
         arp { "ARP", Palette::arp }, filter { "FILTER", Palette::filter }, fx { "EFFECTS", Palette::fx },
         mix { "MIX", Palette::mix };
 };
+
+// Switch the robot, your own voice and the effects on and off, so you can
+// hear each part on its own. Shown in every view.
+class ListenBar : public juce::Component
+{
+public:
+    explicit ListenBar (VocoderProcessor& processor);
+    void resized() override;
+    void paint (juce::Graphics&) override;
+
+private:
+    struct Part
+    {
+        juce::TextButton button;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
+    };
+
+    juce::Label title { {}, "Hear" };
+    Part parts[3];
+    juce::Slider robotLevel, voiceLevel;
+    juce::AudioProcessorValueTreeState::SliderAttachment robotAttachment, voiceAttachment;
+    juce::Label hint;
+};

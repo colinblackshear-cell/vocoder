@@ -147,6 +147,7 @@ private:
     EasyPanel easyPanel;
     MainPanel mainPanel;
     juce::GenericAudioProcessorEditor controls;
+    ListenBar listenBar;
     LatchKeyboard keyboard;
     ChordPad chordPad;
     juce::TextButton octaveDown { "Oct -" }, octaveUp { "Oct +" };

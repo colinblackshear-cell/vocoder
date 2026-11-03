@@ -96,7 +96,8 @@ private:
     vox::StereoDelay delay;
     juce::Reverb reverb;
 
-    juce::SmoothedValue<float> inputGain, outputGain, mix, resonance;
+    juce::SmoothedValue<float> inputGain, outputGain, robotGain, voiceGain, resonance;
+    bool fxOn = true;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> cutoff;
     float filterDrive = 0.0f, voiceFollow = 0.0f, lfoDepth = 0.0f, reverbMix = 0.0f;
 

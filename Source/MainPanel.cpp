@@ -263,7 +263,8 @@ MainPanel::MainPanel (VocoderProcessor& p)
     fx.addKnob (knob (delayMix, "Delay", "Tempo-synced echoes"));
     fx.addKnob (knob (reverbMix, "Reverb", "Space"));
 
-    mix.addKnob (knob (ParamIDs::mix, "Dry/Wet", "Blend your own (tuned) voice with the vocoder"));
+    mix.addKnob (knob (robotLevel, "Robot", "How loud the robot (vocoder) is"));
+    mix.addKnob (knob (voiceLevel, "Voice", "How loud your own voice is, auto-tuned if Auto-Tune is on"));
     mix.addKnob (knob (outputGain, "Level", "Output level"));
 
     for (auto* section : { &voice, &synth, &tune, &arp, &filter, &fx, &mix })
@@ -287,5 +288,83 @@ void MainPanel::resized()
             s->setBounds (row.removeFromLeft (juce::roundToInt (w * unit)));
     };
     lay (top, { { &voice, 3.3f }, { &synth, 4.4f }, { &tune, 4.3f } });
-    lay (bottom, { { &arp, 2.0f }, { &filter, 4.0f }, { &fx, 4.0f }, { &mix, 2.2f } });
+    lay (bottom, { { &arp, 2.0f }, { &filter, 3.6f }, { &fx, 3.6f }, { &mix, 3.0f } });
+}
+
+//==============================================================================
+ListenBar::ListenBar (VocoderProcessor& p)
+    : robotAttachment (p.params, ParamIDs::robotLevel, robotLevel),
+      voiceAttachment (p.params, ParamIDs::voiceLevel, voiceLevel)
+{
+    title.setFont (juce::FontOptions (13.0f, juce::Font::bold));
+    title.setColour (juce::Label::textColourId, Palette::dim);
+    addAndMakeVisible (title);
+
+    struct Info { const char* id; const char* name; const char* tip; juce::Colour colour; };
+    const Info info[] = {
+        { ParamIDs::robotOn, "Robot", "The vocoder: your words, played by the synth on the notes of your chord", Palette::voice },
+        { ParamIDs::voiceOn, "Your voice", "Your own voice. With Auto-Tune on, this is where you hear the correction", Palette::tune },
+        { ParamIDs::fxOn, "Effects", "Echo, reverb, chorus and distortion on whatever you're hearing", Palette::fx },
+    };
+    for (int i = 0; i < 3; ++i)
+    {
+        auto& b = parts[i].button;
+        b.setButtonText (info[i].name);
+        b.setTooltip (info[i].tip);
+        b.setClickingTogglesState (true);
+        b.setWantsKeyboardFocus (false);
+        b.setColour (juce::TextButton::buttonOnColourId, info[i].colour.withAlpha (0.85f));
+        b.setColour (juce::TextButton::textColourOnId, Palette::background);
+        parts[i].attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.params, info[i].id, b);
+        addAndMakeVisible (b);
+    }
+
+    for (auto* s : { &robotLevel, &voiceLevel })
+    {
+        s->setSliderStyle (juce::Slider::LinearHorizontal);
+        s->setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        s->setWantsKeyboardFocus (false);
+        addAndMakeVisible (*s);
+    }
+    robotLevel.setTooltip ("Robot level");
+    voiceLevel.setTooltip ("Your voice level");
+    VocoderLook::setAccent (robotLevel, Palette::voice);
+    VocoderLook::setAccent (voiceLevel, Palette::tune);
+    robotLevel.setColour (juce::Slider::trackColourId, Palette::voice);
+    voiceLevel.setColour (juce::Slider::trackColourId, Palette::tune);
+
+    // A part's level slider fades while the part is switched off.
+    parts[0].button.onStateChange = [this] { robotLevel.setAlpha (parts[0].button.getToggleState() ? 1.0f : 0.35f); };
+    parts[1].button.onStateChange = [this] { voiceLevel.setAlpha (parts[1].button.getToggleState() ? 1.0f : 0.35f); };
+    parts[0].button.onStateChange();
+    parts[1].button.onStateChange();
+
+    hint.setText ("Switch parts off to hear each one alone", juce::dontSendNotification);
+    hint.setFont (juce::FontOptions (12.0f));
+    hint.setColour (juce::Label::textColourId, Palette::dim);
+    addAndMakeVisible (hint);
+}
+
+void ListenBar::paint (juce::Graphics& g)
+{
+    g.fillAll (Palette::panel);
+    g.setColour (Palette::panelEdge);
+    g.fillRect (0, 0, getWidth(), 1);
+}
+
+void ListenBar::resized()
+{
+    auto area = getLocalBounds().reduced (10, 6);
+    title.setBounds (area.removeFromLeft (44));
+
+    // Robot [level]  Your voice [level]  Effects
+    parts[0].button.setBounds (area.removeFromLeft (80));
+    robotLevel.setBounds (area.removeFromLeft (110).reduced (4, 0));
+    area.removeFromLeft (8);
+    parts[1].button.setBounds (area.removeFromLeft (96));
+    voiceLevel.setBounds (area.removeFromLeft (110).reduced (4, 0));
+    area.removeFromLeft (8);
+    parts[2].button.setBounds (area.removeFromLeft (80));
+    area.removeFromLeft (12);
+    hint.setBounds (area);
 }

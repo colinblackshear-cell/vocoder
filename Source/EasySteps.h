@@ -34,7 +34,7 @@ inline const std::vector<Step>& all()
     using namespace ParamIDs;
     static const std::vector<Step> steps {
         { "Voice",
-          "Pick a voice, put on headphones and start singing or talking. Click a chord at the bottom to hear it.",
+          "Pick a robot voice, put on headphones and sing or talk. Click a chord at the bottom to give the robot notes.",
           { bands, sharpness, attack, release, formant, sibilance, waveform, octave, detune, noise, carrierAttack,
             carrierRelease, pulseWidth, pwmDepth, osc2Wave, osc2Semitones, osc2Fine, osc2Level, subLevel, glide,
             vibratoRate, vibratoDepth },
@@ -107,7 +107,7 @@ inline const std::vector<Step>& all()
           true },
 
         { "Auto-Tune",
-          "Snap your singing to the notes of your chords. Sing to Play lets your voice play the synth.",
+          "Auto-tune fixes the pitch of your own voice (switch on Your voice under Hear). Sing to Play lets your singing play the robot.",
           { tuneOn, tuneSpeed, tuneAmount, singToPlay },
           {
               { "Off", "Your voice as it is", {} },
@@ -190,6 +190,10 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Step& step, 
         set (state, ParamIDs::tuneKey, value (state, ParamIDs::chordKey));
         const int scale = juce::jlimit (0, 6, (int) value (state, ParamIDs::chordScale));
         set (state, ParamIDs::tuneScale, (float) ChordNames::tuneScales[scale]);
+
+        // Correcting your voice only makes sense if you can hear it.
+        if (value (state, ParamIDs::singToPlay) < 0.5f)
+            set (state, ParamIDs::voiceOn, 1.0f);
     }
 }
 } // namespace EasySteps

@@ -58,14 +58,16 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
 
     inputGain.reset (sampleRate, 0.02);
     outputGain.reset (sampleRate, 0.02);
-    mix.reset (sampleRate, 0.02);
+    robotGain.reset (sampleRate, 0.02);
+    voiceGain.reset (sampleRate, 0.02);
     resonance.reset (sampleRate, 0.02);
     cutoff.reset (sampleRate, 0.02);
 
     updateSettings (readTiming());
     inputGain.setCurrentAndTargetValue (inputGain.getTargetValue());
     outputGain.setCurrentAndTargetValue (outputGain.getTargetValue());
-    mix.setCurrentAndTargetValue (mix.getTargetValue());
+    robotGain.setCurrentAndTargetValue (robotGain.getTargetValue());
+    voiceGain.setCurrentAndTargetValue (voiceGain.getTargetValue());
     resonance.setCurrentAndTargetValue (resonance.getTargetValue());
     cutoff.setCurrentAndTargetValue (cutoff.getTargetValue());
 }
@@ -196,7 +198,10 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     }
     inputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (params, ParamIDs::inputGain)));
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (params, ParamIDs::outputGain)));
-    mix.setTargetValue (raw (params, ParamIDs::mix));
+    // What you hear: the robot (vocoder), your own (auto-tuned) voice, or both.
+    robotGain.setTargetValue (raw (params, ParamIDs::robotOn) > 0.5f ? raw (params, ParamIDs::robotLevel) : 0.0f);
+    voiceGain.setTargetValue (raw (params, ParamIDs::voiceOn) > 0.5f ? raw (params, ParamIDs::voiceLevel) : 0.0f);
+    fxOn = raw (params, ParamIDs::fxOn) > 0.5f;
 }
 
 void VocoderProcessor::handleMidi (const juce::MidiMessage& message)
@@ -433,19 +438,24 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             wet = std::tanh (wet * (1.0f + filterDrive * 6.0f)) / (1.0f + filterDrive * 2.0f);
         wet = filter.process (wet);
 
-        wet = distortion.process (wet);
+        // The robot and your own voice meet here, and share the effects.
+        float sound = wet * robotGain.getNextValue() + voice * voiceGain.getNextValue();
+        if (fxOn)
+            sound = distortion.process (sound);
 
         // Stereo from here on.
-        float left = wet, right = wet;
-        chorus.process (left, right);
-        delay.process (left, right);
-        if (reverbMix > 0.0f)
-            reverb.processStereo (&left, &right, 1);
+        float left = sound, right = sound;
+        if (fxOn)
+        {
+            chorus.process (left, right);
+            delay.process (left, right);
+            if (reverbMix > 0.0f)
+                reverb.processStereo (&left, &right, 1);
+        }
 
-        const float m = mix.getNextValue();
         const float gain = outputGain.getNextValue();
-        left = std::tanh ((left * m + voice * (1.0f - m)) * gain);
-        right = std::tanh ((right * m + voice * (1.0f - m)) * gain);
+        left = std::tanh (left * gain);
+        right = std::tanh (right * gain);
 
         out.setSample (0, i, stereoOut ? left : 0.5f * (left + right));
         if (stereoOut)

@@ -530,6 +530,7 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
       easyPanel (p),
       mainPanel (p),
       controls (p),
+      listenBar (p),
       keyboard (p.keyboardState),
       chordPad (p, keyboard)
 {
@@ -546,6 +547,7 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     addChildComponent (easyPanel);
     addChildComponent (mainPanel);
     addChildComponent (controls);
+    addAndMakeVisible (listenBar);
     presetBar.onViewChosen = [this] (int view) { showView (view); };
     showView ((int) p.params.state.getProperty ("view", 0)); // new instances start in Easy
     keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffe9ecf2));
@@ -577,7 +579,7 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     setWantsKeyboardFocus (true);
     setResizable (true, true);
     setResizeLimits (760, 600, 1600, 1400);
-    setSize (900, liveBar != nullptr ? 840 : 760);
+    setSize (900, liveBar != nullptr ? 850 : 770);
 }
 
 VocoderEditor::~VocoderEditor()
@@ -659,6 +661,7 @@ void VocoderEditor::resized()
     keyboard.setBounds (area.removeFromBottom (keyboardHeight));
     keyboard.setKeyWidth ((float) keyboard.getWidth() / numWhiteKeys);
     chordPad.setBounds (area.removeFromBottom (chordPadHeight));
+    listenBar.setBounds (area.removeFromBottom (40));
     auto tools = area.removeFromBottom (keyboardToolsHeight).reduced (8, 3);
     octaveDown.setBounds (tools.removeFromLeft (52));
     tools.removeFromLeft (4);

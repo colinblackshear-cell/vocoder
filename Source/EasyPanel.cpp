@@ -145,12 +145,13 @@ void EasyPanel::buildStep()
             knob (reverbMix, "Space", "How big the room is");
             knob (chorusMix, "Wide", "How wide the sound is");
             knob (drive, "Crunch", "How gritty");
-            knob (mix, "Dry/Wet", "Blend in your own voice");
+            knob (voiceLevel, "Your voice", "How loud your own voice is (switch it on under Hear)");
             break;
         default:
             extras.push_back (std::make_unique<TunerDisplay> (processor));
             knob (tuneSpeed, "Speed", "0 is the hard robot snap, higher sounds natural");
-            knob (mix, "Dry/Wet", "Turn down to hear more of your own tuned voice");
+            knob (voiceLevel, "Your voice", "How loud your own tuned voice is");
+            knob (robotLevel, "Robot", "How loud the robot is");
             break;
     }
     for (auto& e : extras)

@@ -78,7 +78,11 @@ inline constexpr auto reverbMix = "reverbMix";
 inline constexpr auto reverbSize = "reverbSize";
 inline constexpr auto reverbDamping = "reverbDamping";
 
-inline constexpr auto mix = "mix";
+inline constexpr auto robotOn = "robotOn";
+inline constexpr auto voiceOn = "voiceOn";
+inline constexpr auto fxOn = "fxOn";
+inline constexpr auto robotLevel = "robotLevel";
+inline constexpr auto voiceLevel = "voiceLevel";
 inline constexpr auto outputGain = "outputGain";
 } // namespace ParamIDs
 
@@ -232,7 +236,11 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     layout.add (std::make_unique<Group> (
         "output", "Output", "|",
-        real (ParamIDs::mix, "Dry/Wet", { 0.0f, 1.0f, 0.01f }, 1.0f, ""),
+        toggle (ParamIDs::robotOn, "Hear Robot", true),
+        toggle (ParamIDs::voiceOn, "Hear Your Voice", false),
+        toggle (ParamIDs::fxOn, "Effects On", true),
+        real (ParamIDs::robotLevel, "Robot Level", { 0.0f, 1.0f, 0.01f }, 1.0f, ""),
+        real (ParamIDs::voiceLevel, "Voice Level", { 0.0f, 1.0f, 0.01f }, 0.8f, ""),
         real (ParamIDs::outputGain, "Output Gain", { -24.0f, 12.0f, 0.1f }, 0.0f, "dB")));
 
     return layout;

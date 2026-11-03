@@ -91,7 +91,7 @@ inline const std::vector<Preset>& all()
 
         // Your voice, snapped hard to the notes, with the robot underneath.
         { "Auto-Tune", "Hard Tune",
-          { { tuneOn, 1 }, { tuneSpeed, 0 }, { mix, 0.45f }, { waveform, Wave::supersaw }, { detune, 12 },
+          { { tuneOn, 1 }, { tuneSpeed, 0 }, { voiceOn, 1 }, { robotLevel, 0.5f }, { waveform, Wave::supersaw }, { detune, 12 },
             { cutoff, 7000 }, { chorusMix, 0.3f }, { delayMix, 0.2f }, { delayTime, 3 }, { reverbMix, 0.25f } } },
 
         // No keys needed: the synth follows the melody you sing.
@@ -102,7 +102,7 @@ inline const std::vector<Preset>& all()
 
         // Sing one note, hear a three-note chord in your key.
         { "Auto-Tune", "Harmony Choir",
-          { { singToPlay, 3 }, { tuneOn, 1 }, { tuneSpeed, 20 }, { mix, 0.8f }, { waveform, Wave::supersaw },
+          { { singToPlay, 3 }, { tuneOn, 1 }, { tuneSpeed, 20 }, { voiceOn, 1 }, { voiceLevel, 0.3f }, { waveform, Wave::supersaw },
             { detune, 25 }, { bands, 28 }, { carrierAttack, 40 }, { carrierRelease, 300 }, { cutoff, 6000 },
             { chorusMix, 0.5f }, { reverbMix, 0.45f }, { reverbSize, 0.8f } } },
 
@@ -154,7 +154,7 @@ inline const std::vector<Preset>& all()
             { lfoSync, 5 }, { lfoDepth, 3.0f }, { drive, 0.45f } } },
 
         { "Auto-Tune", "Pop Star",
-          { { tuneOn, 1 }, { tuneSpeed, 5 }, { mix, 0.3f }, { waveform, Wave::supersaw }, { detune, 10 }, { bands, 26 },
+          { { tuneOn, 1 }, { tuneSpeed, 5 }, { voiceOn, 1 }, { robotLevel, 0.35f }, { waveform, Wave::supersaw }, { detune, 10 }, { bands, 26 },
             { chorusMix, 0.35f }, { delayMix, 0.2f }, { delayTime, 3 }, { reverbMix, 0.3f } } },
     };
     return presets;

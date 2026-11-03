@@ -145,6 +145,29 @@ int main()
                        + (active ? "" : " (tile not lit)"));
         }
 
+    // Hear switches: each part on its own.
+    {
+        auto make = [&] (bool robot, bool voice, bool fx, float& peak)
+        {
+            VocoderProcessor proc;
+            proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
+            proc.prepareToPlay (sampleRate, blockSize);
+            EasySteps::set (proc.params, "robotOn", robot ? 1.0f : 0.0f);
+            EasySteps::set (proc.params, "voiceOn", voice ? 1.0f : 0.0f);
+            EasySteps::set (proc.params, "fxOn", fx ? 1.0f : 0.0f);
+            EasySteps::set (proc.params, "reverbMix", 0.5f);
+            bool finite = true;
+            peak = run (proc, 300, finite);
+            return finite;
+        };
+        float voiceOnly = 0, none = 0, noChordRobot = 0;
+        // No chord is playing, so the robot alone is silent and your voice alone is clearly heard.
+        bool ok = make (true, false, false, noChordRobot) && make (false, true, false, voiceOnly) && make (false, false, true, none);
+        check (ok && noChordRobot < 0.01f && voiceOnly > 0.2f && none < 0.01f,
+               "hear switches: robot alone (no chord) " + juce::String (noChordRobot, 3) + ", your voice alone "
+                   + juce::String (voiceOnly, 3) + ", nothing " + juce::String (none, 4));
+    }
+
     // Effects tiles switch off again, back to the defaults.
     {
         VocoderProcessor proc;

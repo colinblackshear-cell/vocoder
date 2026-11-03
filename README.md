@@ -65,6 +65,14 @@ Pick a view at the top right:
 - **Studio** shows the main controls as knobs in coloured sections.
 - **Advanced** shows every setting as a list.
 
+The **Hear** bar above the chord buttons switches each part on and off, so you can hear it alone:
+
+- **Robot** is the vocoder: your words, played by the synth on the notes of your chord.
+- **Your voice** is your own voice, auto-tuned when Auto-Tune is on. Switch Robot off to hear just the auto-tune.
+- **Effects** turns echo, reverb, chorus and distortion on or off for whatever you're hearing.
+
+The sliders next to Robot and Your voice set their levels.
+
 Hover over any control for a tip, and double-click a knob to reset it. The view you pick is saved with the song.
 
 ## Chord buttons
@@ -77,8 +85,7 @@ of that scale, named like Cm7 or Fmaj7. Changing the type while a chord plays sw
 
 - **Auto-Tune** snaps your voice to the nearest note. Pick the song's **Key** and **Scale**, or leave the
   scale on Chromatic to work in any key. **Speed** at 0 gives the hard, robotic effect; higher sounds
-  natural. **Amount** blends in less correction. You hear the tuned voice through **Dry/Wet**: turn it down
-  from 100% to mix your tuned voice with the vocoder.
+  natural. **Amount** blends in less correction. You hear the tuned voice through **Your voice** in the Hear bar.
 - **Sing to Play** makes the synth follow the melody you sing, so you don't need any keys. **Melody + Third**
   and **Full Chord** add harmony notes in your key. (In Chromatic, the harmony uses the major scale of the key.)
 - The strip under the knobs shows the note you're singing and how far off it is.
@@ -131,7 +138,8 @@ saves your changes with the song.
 | Effects | Chorus Mix, Rate, Depth | Widens the sound in stereo |
 | Effects | Delay Mix, Time, Feedback, Ping-Pong | Tempo-synced echoes, bouncing left and right |
 | Effects | Reverb Mix, Size, Damping | Space, from a small room to a huge hall |
-| Output | Dry/Wet, Output Gain | Blend in your plain voice, and the final level (soft-clipped so it can't blast) |
+| Output | Hear Robot, Hear Your Voice, Effects On | Switch each part on or off to hear it alone |
+| Output | Robot Level, Voice Level, Output Gain | Levels for the robot and your (tuned) voice, and the final level (soft-clipped so it can't blast) |
 
 ## Build from source
 
