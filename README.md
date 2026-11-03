@@ -56,9 +56,22 @@ Your devices and settings are remembered for next time.
 
 ## The window
 
-The main view shows the controls that matter most, as knobs in coloured sections: **Voice**, **Synth**,
-**Auto-Tune**, **Arp**, **Filter**, **Effects** and **Mix**. Hover over any control for a tip, and
-double-click a knob to reset it. **Advanced** (top right) shows every setting as a list.
+Pick a view at the top right:
+
+- **Easy** builds a sound one step at a time with big buttons: **1 Voice** (Robot, Daft, Choir, Whisper,
+  Monster, Chipmunk, Alien, Retro Game), **2 Chords** (Simple, Dreamy, Jazzy, Floaty, Tense, Sparkly, Rock,
+  Huge), **3 Rhythm** (arps and gates), **4 Effects** (Echo, Space, Wide, Wobble, Wah, Crunch: turn on as many
+  as you like) and **5 Auto-Tune**. Each step has a few knobs to fine-tune it. Good for kids and quick ideas.
+- **Studio** shows the main controls as knobs in coloured sections.
+- **Advanced** shows every setting as a list.
+
+Hover over any control for a tip, and double-click a knob to reset it. The view you pick is saved with the song.
+
+## Chord buttons
+
+Pick a **Key**, a **Scale** (Major, Minor, Dorian, Mixolydian, Lydian, Phrygian, Harmonic Minor) and a
+**Chord type** (Simple, Seventh, Ninth, Sus2, Sus4, Add9, Sixth, Power, Big). The seven buttons are the chords
+of that scale, named like Cm7 or Fmaj7. Changing the type while a chord plays switches it straight away.
 
 ## Auto-tune
 
@@ -74,9 +87,10 @@ double-click a knob to reset it. **Advanced** (top right) shows every setting as
 
 The **Sound** menu (also in Logic's preset menu at the top of the plugin window) has ready-made starting
 points: Init, Classic Robot, French Touch, Choir Pad, Whisper Ghost, Trance Gate, Stutter Chop, Arp Robot,
-Acid Wobble, Auto-Wah Funk, Lo-Fi Radio, Monster, Chipmunk Bot, Space Echo, Hard Tune, Sing the Synth and
-Harmony Choir. Choosing one resets the sound but leaves your input gain, gate, tempo, metronome, key, scale,
-drone and output level alone. Tweak from there; Logic
+Acid Wobble, Auto-Wah Funk, Lo-Fi Radio, Monster, Chipmunk Bot, Space Echo, Hard Tune, Sing the Synth,
+Harmony Choir, Talk Box Funk, 80s Synth Pop, Underwater, Glitch Bot, Cathedral, Ice Crystal, Lullaby,
+Disco Bounce, Gallop Rider, Dubstep Growl and Pop Star, grouped by category. Choosing one resets the sound but leaves your input gain, gate, tempo, metronome, key, scale,
+drone, chord settings and output level alone. Tweak from there; Logic
 saves your changes with the song.
 
 ## Controls
@@ -143,4 +157,5 @@ The DSP tests also build without JUCE: `cmake -S . -B build -DVOCODER_TESTS_ONLY
 6. ~~Standalone live mode: device pickers, recorder, on-screen keyboard, chord buttons~~
 7. Unison, chord memory, phaser, limiter
 8. ~~Auto-tune, Sing to Play, designed interface~~
-9. User presets, MIDI learn
+9. ~~Easy mode, more chords and scales, more presets~~
+10. User presets, MIDI learn, live rig with the crate tools

@@ -1,5 +1,7 @@
 #include "PluginEditor.h"
 #include "Parameters.h"
+#include "Presets.h"
+#include "dsp/Chords.h"
 
 #include <juce_audio_plugin_client/Standalone/juce_StandaloneFilterWindow.h>
 
@@ -8,7 +10,7 @@ namespace
 constexpr int liveBarHeight = 76;
 constexpr int keyboardHeight = 90;
 constexpr int keyboardToolsHeight = 28;
-constexpr int chordPadHeight = 36;
+constexpr int chordPadHeight = 82;
 constexpr int numWhiteKeys = 36; // C2 to C7
 constexpr int presetBarHeight = 44;
 const auto background = Palette::background;
@@ -286,21 +288,37 @@ bool LatchKeyboard::mouseDraggedToKey (int note, const juce::MouseEvent& e)
 }
 
 //==============================================================================
-ChordPad::ChordPad (VocoderProcessor& p, LatchKeyboard& k) : processor (p), keyboard (k)
+namespace
 {
-    keyBox.addItemList ({ "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, 1);
-    keyBox.setSelectedId (1, juce::dontSendNotification);
-    scaleBox.addItemList ({ "Major", "Minor" }, 1);
-    scaleBox.setSelectedId (2, juce::dontSendNotification);
+juce::ComboBox& filled (juce::ComboBox& box, juce::AudioProcessorValueTreeState& state, const char* id)
+{
+    box.addItemList (state.getParameter (id)->getAllValueStrings(), 1);
+    return box;
+}
+} // namespace
 
-    for (auto* box : { &keyBox, &scaleBox })
+ChordPad::ChordPad (VocoderProcessor& p, LatchKeyboard& k)
+    : processor (p), keyboard (k),
+      keyAttachment (p.params, ParamIDs::chordKey, filled (keyBox, p.params, ParamIDs::chordKey)),
+      scaleAttachment (p.params, ParamIDs::chordScale, filled (scaleBox, p.params, ParamIDs::chordScale)),
+      flavourAttachment (p.params, ParamIDs::chordFlavour, filled (flavourBox, p.params, ParamIDs::chordFlavour))
+{
+    VocoderLook::setAccent (*this, Palette::filter);
+
+    for (auto* label : { &keyLabel, &scaleLabel, &flavourLabel })
+    {
+        label->setFont (juce::FontOptions (11.5f));
+        label->setColour (juce::Label::textColourId, Palette::dim);
+        addAndMakeVisible (*label);
+    }
+
+    keyBox.setTooltip ("The song's key");
+    scaleBox.setTooltip ("Major sounds happy, Minor sad, Dorian and Mixolydian funky, Lydian dreamy, Phrygian dark");
+    flavourBox.setTooltip ("Simple is three notes. Seventh and Ninth sound jazzy, Sus floaty, Power rocky, Big wide");
+    for (auto* box : { &keyBox, &scaleBox, &flavourBox })
     {
         box->setWantsKeyboardFocus (false);
-        box->onChange = [this]
-        {
-            stopAll();
-            relabel();
-        };
+        box->onChange = [this] { settingsChanged(); };
         addAndMakeVisible (*box);
     }
 
@@ -309,7 +327,7 @@ ChordPad::ChordPad (VocoderProcessor& p, LatchKeyboard& k) : processor (p), keyb
         auto& b = chordButtons[i];
         b.setClickingTogglesState (false);
         b.setWantsKeyboardFocus (false);
-        b.setColour (juce::TextButton::buttonOnColourId, juce::Colour (0xff3d8bd8));
+        b.setColour (juce::TextButton::buttonOnColourId, Palette::filter.withAlpha (0.85f));
         b.onClick = [this, i] { toggleChord (i); };
         addAndMakeVisible (b);
     }
@@ -326,51 +344,64 @@ ChordPad::ChordPad (VocoderProcessor& p, LatchKeyboard& k) : processor (p), keyb
     relabel();
 }
 
+void ChordPad::paint (juce::Graphics& g)
+{
+    g.fillAll (Palette::panel);
+    g.setColour (Palette::panelEdge);
+    g.fillRect (0, 0, getWidth(), 1);
+}
+
 void ChordPad::resized()
 {
-    auto area = getLocalBounds().reduced (8, 4);
-    keyBox.setBounds (area.removeFromLeft (60));
-    area.removeFromLeft (4);
-    scaleBox.setBounds (area.removeFromLeft (80));
-    area.removeFromLeft (10);
+    auto area = getLocalBounds().reduced (8, 6);
 
-    stopButton.setBounds (area.removeFromRight (72));
-    area.removeFromRight (4);
-    holdButton.setBounds (area.removeFromRight (92));
-    area.removeFromRight (6);
+    // Top row: settings on the left, Hold and Stop on the right.
+    auto top = area.removeFromTop (24);
+    stopButton.setBounds (top.removeFromRight (80));
+    top.removeFromRight (6);
+    holdButton.setBounds (top.removeFromRight (100));
+    for (auto [label, box, width] : { std::tuple { &keyLabel, &keyBox, 70 }, { &scaleLabel, &scaleBox, 140 },
+                                      { &flavourLabel, &flavourBox, 110 } })
+    {
+        label->setBounds (top.removeFromLeft (label == &flavourLabel ? 72 : 40));
+        box->setBounds (top.removeFromLeft (width));
+        top.removeFromLeft (10);
+    }
 
+    // Bottom row: the seven chords of the scale, big enough to hit easily.
+    area.removeFromTop (6);
     const int width = area.getWidth() / numChords;
     for (auto& b : chordButtons)
-        b.setBounds (area.removeFromLeft (width).reduced (2, 0));
+        b.setBounds (area.removeFromLeft (width).reduced (3, 0));
 }
 
 juce::Array<int> ChordPad::notesFor (int index) const
 {
-    // Diatonic triads: degree offsets from the key, and whether each is minor.
-    static constexpr int majorRoots[] = { 0, 2, 4, 5, 7, 9 };
-    static constexpr bool majorMinor[] = { false, true, true, false, false, true };
-    static constexpr int minorRoots[] = { 0, 3, 5, 7, 8, 10 };
-    static constexpr bool minorMinor[] = { true, false, true, true, false, false };
-
-    const bool isMajor = scaleBox.getSelectedId() == 1;
-    const int key = keyBox.getSelectedId() - 1;
-    const int root = 48 + (key + (isMajor ? majorRoots[index] : minorRoots[index])) % 12;
-    const bool minor = isMajor ? majorMinor[index] : minorMinor[index];
-
-    // Root, third, fifth and the octave: a full voicing for the vocoder.
-    return { root, root + (minor ? 3 : 4), root + 7, root + 12 };
+    auto value = [this] (const char* id) { return (int) processor.params.getRawParameterValue (id)->load(); };
+    juce::Array<int> notes;
+    for (int n : vox::Chords::build (value (ParamIDs::chordKey), value (ParamIDs::chordScale), index,
+                                     value (ParamIDs::chordFlavour)))
+        notes.add (n);
+    return notes;
 }
 
 void ChordPad::relabel()
 {
-    static const juce::StringArray names { "C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B" };
+    auto value = [this] (const char* id) { return (int) processor.params.getRawParameterValue (id)->load(); };
     for (int i = 0; i < numChords; ++i)
     {
-        const auto notes = notesFor (i);
-        const bool minor = notes[1] - notes[0] == 3;
-        chordButtons[i].setButtonText (names[notes[0] % 12] + (minor ? "m" : ""));
+        chordButtons[i].setButtonText (vox::Chords::name (value (ParamIDs::chordKey), value (ParamIDs::chordScale), i,
+                                                          value (ParamIDs::chordFlavour)));
         chordButtons[i].setToggleState (i == activeChord, juce::dontSendNotification);
     }
+}
+
+void ChordPad::settingsChanged()
+{
+    // A chord that's playing switches straight to the new key, scale or type.
+    if (activeChord >= 0)
+        processor.requestChord (notesFor (activeChord));
+    relabel();
 }
 
 void ChordPad::toggleChord (int index)
@@ -393,8 +424,18 @@ void ChordPad::stopAll()
 //==============================================================================
 PresetBar::PresetBar (VocoderProcessor& p) : processor (p)
 {
-    for (int i = 0; i < processor.getNumPrograms(); ++i)
-        presetBox.addItem (processor.getProgramName (i), i + 1);
+    // Grouped by category, in the order categories first appear.
+    const auto& presets = Presets::all();
+    juce::StringArray categories;
+    for (const auto& preset : presets)
+        categories.addIfNotAlreadyThere (preset.category);
+    for (const auto& category : categories)
+    {
+        presetBox.addSectionHeading (category);
+        for (size_t i = 0; i < presets.size(); ++i)
+            if (category == presets[i].category)
+                presetBox.addItem (presets[i].name, (int) i + 1);
+    }
     presetBox.setSelectedId (processor.getCurrentProgram() + 1, juce::dontSendNotification);
     presetBox.onChange = [this] { choose (presetBox.getSelectedId() - 1); };
     prevButton.onClick = [this] { choose (processor.getCurrentProgram() - 1); };
@@ -403,10 +444,24 @@ PresetBar::PresetBar (VocoderProcessor& p) : processor (p)
     title.setFont (juce::FontOptions (12.0f));
     title.setColour (juce::Label::textColourId, Palette::dim);
     title.setJustificationType (juce::Justification::centredRight);
-    advancedButton.setClickingTogglesState (true);
-    advancedButton.setTooltip ("Every setting, as a list");
-    advancedButton.setColour (juce::TextButton::buttonOnColourId, Palette::synth.withAlpha (0.6f));
-    for (auto* c : std::initializer_list<juce::Component*> { &title, &presetBox, &prevButton, &nextButton, &advancedButton })
+    const char* viewTips[] = { "Build a sound step by step with big buttons", "The main controls as knobs",
+                               "Every setting, as a list" };
+    for (int i = 0; i < 3; ++i)
+    {
+        auto& b = viewButtons[i];
+        b.setClickingTogglesState (false);
+        b.setTooltip (viewTips[i]);
+        b.setColour (juce::TextButton::buttonOnColourId, Palette::synth.withAlpha (0.75f));
+        b.setConnectedEdges ((i > 0 ? juce::Button::ConnectedOnLeft : 0) | (i < 2 ? juce::Button::ConnectedOnRight : 0));
+        b.onClick = [this, i]
+        {
+            if (onViewChosen)
+                onViewChosen (i);
+        };
+        b.setWantsKeyboardFocus (false);
+        addAndMakeVisible (b);
+    }
+    for (auto* c : std::initializer_list<juce::Component*> { &title, &presetBox, &prevButton, &nextButton })
     {
         c->setWantsKeyboardFocus (false);
         addAndMakeVisible (c);
@@ -454,10 +509,10 @@ void PresetBar::paint (juce::Graphics& g)
 void PresetBar::resized()
 {
     auto area = getLocalBounds().reduced (12, 8);
-    advancedButton.setBounds (area.removeFromRight (96));
+    for (int i = 2; i >= 0; --i)
+        viewButtons[i].setBounds (area.removeFromRight (i == 2 ? 84 : 66));
 
     auto centre = area.withSizeKeepingCentre (juce::jmin (380, area.getWidth() - 260), area.getHeight());
-    centre.translate (40, 0);
     title.setBounds (centre.removeFromLeft (50));
     centre.removeFromLeft (6);
     prevButton.setBounds (centre.removeFromLeft (30));
@@ -472,6 +527,7 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     : AudioProcessorEditor (p),
       processor (p),
       presetBar (p),
+      easyPanel (p),
       mainPanel (p),
       controls (p),
       keyboard (p.keyboardState),
@@ -487,9 +543,11 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     setLookAndFeel (&look);
 
     addAndMakeVisible (presetBar);
-    addAndMakeVisible (mainPanel);
+    addChildComponent (easyPanel);
+    addChildComponent (mainPanel);
     addChildComponent (controls);
-    presetBar.advancedButton.onClick = [this] { showAdvanced (presetBar.advancedButton.getToggleState()); };
+    presetBar.onViewChosen = [this] (int view) { showView (view); };
+    showView ((int) p.params.state.getProperty ("view", 0)); // new instances start in Easy
     keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffe9ecf2));
     keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff1b1f27));
     keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff9aa3b2));
@@ -527,10 +585,15 @@ VocoderEditor::~VocoderEditor()
     setLookAndFeel (nullptr);
 }
 
-void VocoderEditor::showAdvanced (bool advanced)
+void VocoderEditor::showView (int view)
 {
-    mainPanel.setVisible (! advanced);
-    controls.setVisible (advanced);
+    view = juce::jlimit (0, 2, view);
+    easyPanel.setVisible (view == 0);
+    mainPanel.setVisible (view == 1);
+    controls.setVisible (view == 2);
+    for (int i = 0; i < 3; ++i)
+        presetBar.viewButtons[i].setToggleState (i == view, juce::dontSendNotification);
+    processor.params.state.setProperty ("view", view, nullptr); // remembered with the song
 }
 
 void VocoderEditor::setOctave (int octave)
@@ -603,6 +666,7 @@ void VocoderEditor::resized()
     tools.removeFromLeft (10);
     keyHint.setBounds (tools);
 
+    easyPanel.setBounds (area);
     mainPanel.setBounds (area);
     controls.setBounds (area);
 }

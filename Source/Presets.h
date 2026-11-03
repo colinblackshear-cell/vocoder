@@ -13,6 +13,7 @@ namespace Presets
 {
 struct Preset
 {
+    const char* category;
     const char* name;
     std::vector<std::pair<const char*, float>> values;
 };
@@ -27,83 +28,134 @@ inline const std::vector<Preset>& all()
 {
     using namespace ParamIDs;
     static const std::vector<Preset> presets {
-        { "Init", {} },
+        { "Start", "Init", {} },
 
-        { "Classic Robot",
+        { "Robots", "Classic Robot",
           { { waveform, Wave::saw }, { bands, 16 }, { sharpness, 1.6f }, { release, 40 }, { noise, 0.05f },
             { cutoff, 8000 }, { chorusMix, 0.15f } } },
 
-        { "French Touch",
+        { "Robots", "French Touch",
           { { waveform, Wave::supersaw }, { detune, 14 }, { bands, 24 }, { attack, 3 }, { release, 50 },
             { osc2Wave, Osc2::saw }, { osc2Semitones, 12 }, { osc2Level, 0.3f }, { glide, 40 },
             { cutoff, 6000 }, { resonance, 0.35f }, { drive, 0.15f },
             { chorusMix, 0.5f }, { chorusRate, 0.6f }, { reverbMix, 0.15f } } },
 
-        { "Choir Pad",
+        { "Pads and Space", "Choir Pad",
           { { waveform, Wave::supersaw }, { detune, 30 }, { bands, 32 }, { sharpness, 2.0f }, { attack, 15 },
             { release, 250 }, { carrierAttack, 300 }, { carrierRelease, 1500 }, { vibratoRate, 4.5f },
             { vibratoDepth, 12 }, { cutoff, 5000 }, { chorusMix, 0.6f }, { reverbMix, 0.5f }, { reverbSize, 0.85f } } },
 
-        { "Whisper Ghost",
+        { "Characters", "Whisper Ghost",
           { { waveform, Wave::triangle }, { noise, 0.8f }, { sibilance, 0.8f }, { formant, 3 }, { bands, 28 },
             { filterMode, Filter::highPass }, { cutoff, 300 }, { delayMix, 0.3f }, { delayTime, 2 },
             { reverbMix, 0.55f }, { reverbSize, 0.9f } } },
 
-        { "Trance Gate",
+        { "Rhythm", "Trance Gate",
           { { waveform, Wave::supersaw }, { detune, 22 }, { arpMode, Arp::gate }, { gatePattern, 3 }, { arpRate, 3 },
             { arpGate, 0.5f }, { cutoff, 7000 }, { delayMix, 0.3f }, { delayTime, 1 }, { reverbMix, 0.3f } } },
 
-        { "Stutter Chop",
+        { "Rhythm", "Stutter Chop",
           { { waveform, Wave::square }, { arpMode, Arp::gate }, { gatePattern, 5 }, { arpRate, 3 }, { arpGate, 0.7f },
             { cutoff, 4000 }, { resonance, 0.4f }, { crush, 0.25f } } },
 
-        { "Arp Robot",
+        { "Rhythm", "Arp Robot",
           { { waveform, Wave::pulse }, { pulseWidth, 0.3f }, { pwmDepth, 0.4f }, { arpMode, Arp::notes }, { arpRate, 3 },
             { arpPattern, 2 }, { arpOctaves, 2 }, { arpGate, 0.5f }, { cutoff, 6000 },
             { delayMix, 0.35f }, { delayTime, 3 }, { delayFeedback, 0.45f } } },
 
-        { "Acid Wobble",
+        { "Filters", "Acid Wobble",
           { { waveform, Wave::saw }, { subLevel, 0.5f }, { cutoff, 600 }, { resonance, 0.8f }, { filterDrive, 0.5f },
             { lfoShape, 0 }, { lfoSync, 6 }, { lfoDepth, 2.5f }, { drive, 0.3f } } },
 
-        { "Auto-Wah Funk",
+        { "Filters", "Auto-Wah Funk",
           { { waveform, Wave::square }, { subLevel, 0.3f }, { cutoff, 400 }, { resonance, 0.75f }, { voiceFollow, 3 },
             { chorusMix, 0.2f } } },
 
-        { "Lo-Fi Radio",
+        { "Characters", "Lo-Fi Radio",
           { { waveform, Wave::square }, { bands, 12 }, { noise, 0.15f }, { filterMode, Filter::bandPass }, { cutoff, 1500 },
             { resonance, 0.3f }, { crush, 0.5f }, { drive, 0.4f } } },
 
-        { "Monster",
+        { "Characters", "Monster",
           { { waveform, Wave::saw }, { octave, -1 }, { formant, -7 }, { osc2Wave, Osc2::square }, { osc2Semitones, -12 },
             { osc2Level, 0.5f }, { subLevel, 0.8f }, { cutoff, 3000 }, { drive, 0.5f }, { reverbMix, 0.25f },
             { reverbSize, 0.7f } } },
 
-        { "Chipmunk Bot",
+        { "Characters", "Chipmunk Bot",
           { { waveform, Wave::pulse }, { pulseWidth, 0.25f }, { octave, 1 }, { formant, 7 }, { glide, 60 },
             { vibratoRate, 7 }, { vibratoDepth, 25 }, { crush, 0.2f } } },
 
-        { "Space Echo",
+        { "Pads and Space", "Space Echo",
           { { waveform, Wave::supersaw }, { detune, 25 }, { cutoff, 3000 }, { lfoSync, 1 }, { lfoDepth, 1.5f },
             { chorusMix, 0.4f }, { delayMix, 0.5f }, { delayTime, 3 }, { delayFeedback, 0.7f },
             { reverbMix, 0.5f }, { reverbSize, 0.9f }, { reverbDamping, 0.3f } } },
 
         // Your voice, snapped hard to the notes, with the robot underneath.
-        { "Hard Tune",
+        { "Auto-Tune", "Hard Tune",
           { { tuneOn, 1 }, { tuneSpeed, 0 }, { mix, 0.45f }, { waveform, Wave::supersaw }, { detune, 12 },
             { cutoff, 7000 }, { chorusMix, 0.3f }, { delayMix, 0.2f }, { delayTime, 3 }, { reverbMix, 0.25f } } },
 
         // No keys needed: the synth follows the melody you sing.
-        { "Sing the Synth",
+        { "Auto-Tune", "Sing the Synth",
           { { singToPlay, 1 }, { tuneOn, 1 }, { tuneSpeed, 10 }, { waveform, Wave::saw }, { osc2Level, 0.35f },
             { osc2Semitones, 12 }, { glide, 30 }, { carrierRelease, 80 }, { cutoff, 8000 }, { chorusMix, 0.35f },
             { reverbMix, 0.2f } } },
 
         // Sing one note, hear a three-note chord in your key.
-        { "Harmony Choir",
+        { "Auto-Tune", "Harmony Choir",
           { { singToPlay, 3 }, { tuneOn, 1 }, { tuneSpeed, 20 }, { mix, 0.8f }, { waveform, Wave::supersaw },
             { detune, 25 }, { bands, 28 }, { carrierAttack, 40 }, { carrierRelease, 300 }, { cutoff, 6000 },
             { chorusMix, 0.5f }, { reverbMix, 0.45f }, { reverbSize, 0.8f } } },
+
+        { "Robots", "Talk Box Funk",
+          { { waveform, Wave::saw }, { bands, 18 }, { sharpness, 1.4f }, { release, 30 }, { glide, 25 }, { subLevel, 0.3f },
+            { cutoff, 3500 }, { resonance, 0.45f }, { voiceFollow, 1.5f }, { drive, 0.2f } } },
+
+        { "Robots", "80s Synth Pop",
+          { { waveform, Wave::pulse }, { pulseWidth, 0.35f }, { pwmDepth, 0.3f }, { osc2Wave, Osc2::saw },
+            { osc2Semitones, 0 }, { osc2Fine, 8 }, { osc2Level, 0.6f }, { bands, 22 }, { chorusMix, 0.55f },
+            { chorusRate, 0.5f }, { delayMix, 0.2f }, { delayTime, 3 }, { reverbMix, 0.2f } } },
+
+        { "Characters", "Underwater",
+          { { waveform, Wave::triangle }, { formant, -4 }, { release, 180 }, { filterMode, Filter::lowPass }, { cutoff, 700 },
+            { resonance, 0.55f }, { lfoShape, 0 }, { lfoSync, 3 }, { lfoDepth, 1.0f }, { chorusMix, 0.6f },
+            { chorusDepth, 0.9f }, { reverbMix, 0.35f } } },
+
+        { "Characters", "Glitch Bot",
+          { { waveform, Wave::square }, { bands, 10 }, { crush, 0.6f }, { arpMode, Arp::gate }, { gatePattern, 6 },
+            { arpRate, 4 }, { arpGate, 0.8f }, { delayMix, 0.25f }, { delayTime, 5 }, { delayFeedback, 0.3f } } },
+
+        { "Pads and Space", "Cathedral",
+          { { waveform, Wave::supersaw }, { detune, 18 }, { bands, 36 }, { sharpness, 2.4f }, { release, 400 },
+            { carrierAttack, 600 }, { carrierRelease, 2500 }, { osc2Semitones, 12 }, { osc2Level, 0.25f },
+            { cutoff, 4500 }, { reverbMix, 0.75f }, { reverbSize, 0.95f }, { reverbDamping, 0.6f } } },
+
+        { "Pads and Space", "Ice Crystal",
+          { { waveform, Wave::triangle }, { octave, 1 }, { formant, 5 }, { osc2Wave, Osc2::triangle }, { osc2Semitones, 19 },
+            { osc2Level, 0.4f }, { arpMode, Arp::notes }, { arpRate, 4 }, { arpPattern, 3 }, { arpOctaves, 2 },
+            { arpGate, 0.3f }, { delayMix, 0.45f }, { delayTime, 3 }, { delayFeedback, 0.6f }, { reverbMix, 0.5f } } },
+
+        { "Pads and Space", "Lullaby",
+          { { waveform, Wave::triangle }, { attack, 12 }, { release, 200 }, { carrierAttack, 150 }, { carrierRelease, 900 },
+            { vibratoRate, 4 }, { vibratoDepth, 8 }, { cutoff, 3000 }, { arpMode, Arp::notes }, { arpRate, 1 },
+            { arpPattern, 2 }, { arpGate, 0.9f }, { chorusMix, 0.4f }, { reverbMix, 0.45f }, { reverbSize, 0.75f } } },
+
+        { "Rhythm", "Disco Bounce",
+          { { waveform, Wave::saw }, { osc2Semitones, 12 }, { osc2Level, 0.3f }, { arpMode, Arp::notes }, { arpRate, 1 },
+            { arpPattern, 0 }, { arpOctaves, 2 }, { arpGate, 0.45f }, { arpSwing, 0.2f }, { cutoff, 5000 },
+            { resonance, 0.35f }, { chorusMix, 0.3f }, { reverbMix, 0.15f } } },
+
+        { "Rhythm", "Gallop Rider",
+          { { waveform, Wave::supersaw }, { arpMode, Arp::gate }, { gatePattern, 4 }, { arpRate, 3 }, { arpGate, 0.6f },
+            { cutoff, 6000 }, { delayMix, 0.2f }, { delayTime, 4 }, { reverbMix, 0.25f } } },
+
+        { "Filters", "Dubstep Growl",
+          { { waveform, Wave::saw }, { octave, -1 }, { osc2Wave, Osc2::square }, { osc2Semitones, -12 }, { osc2Level, 0.6f },
+            { subLevel, 0.6f }, { cutoff, 500 }, { resonance, 0.7f }, { filterDrive, 0.7f }, { lfoShape, 0 },
+            { lfoSync, 5 }, { lfoDepth, 3.0f }, { drive, 0.45f } } },
+
+        { "Auto-Tune", "Pop Star",
+          { { tuneOn, 1 }, { tuneSpeed, 5 }, { mix, 0.3f }, { waveform, Wave::supersaw }, { detune, 10 }, { bands, 26 },
+            { chorusMix, 0.35f }, { delayMix, 0.2f }, { delayTime, 3 }, { reverbMix, 0.3f } } },
     };
     return presets;
 }
@@ -112,7 +164,8 @@ inline const std::vector<Preset>& all()
 inline bool keepsValue (const juce::String& id)
 {
     using namespace ParamIDs;
-    for (auto* kept : { inputGain, gateThreshold, tempo, metronome, chordTiming, drone, droneNote, outputGain, tuneKey, tuneScale })
+    for (auto* kept : { inputGain, gateThreshold, tempo, metronome, chordTiming, drone, droneNote, outputGain, tuneKey, tuneScale,
+                              chordKey, chordScale, chordFlavour })
         if (id == kept)
             return true;
     return false;
