@@ -89,3 +89,28 @@ private:
         arp { "ARP", Palette::arp }, filter { "FILTER", Palette::filter }, fx { "EFFECTS", Palette::fx },
         mix { "MIX", Palette::mix };
 };
+
+// Your sound as a chain of modules: Your voice, Auto-Tune, Robot, Rhythm,
+// Effects. Each switches on and off on its own, so you can start from your
+// raw voice and add only what you want. Shown in every view.
+class ListenBar : public juce::Component
+{
+public:
+    explicit ListenBar (VocoderProcessor& processor);
+    void resized() override;
+    void paint (juce::Graphics&) override;
+
+private:
+    static constexpr int numParts = 5;
+
+    struct Part
+    {
+        juce::TextButton button;
+        std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
+    };
+
+    juce::Label title { {}, "Your sound" };
+    Part parts[numParts];
+    juce::Slider robotLevel, voiceLevel;
+    juce::AudioProcessorValueTreeState::SliderAttachment robotAttachment, voiceAttachment;
+};

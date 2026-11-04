@@ -23,6 +23,17 @@ int main()
         p->setValueNotifyingHost (p->convertTo0to1 (value));
     };
 
+    // The robot on its own (a new instance starts as just your raw voice).
+    auto robotOnly = [] (VocoderProcessor& proc)
+    {
+        for (auto [id, v] : { std::pair { "robotOn", 1.0f }, { "voiceOn", 0.0f }, { "arpOn", 1.0f } })
+        {
+            auto* p = proc.params.getParameter (id);
+            p->setValueNotifyingHost (p->convertTo0to1 (v));
+        }
+    };
+    robotOnly (processor);
+
     int failures = 0;
     for (int arpMode = 0; arpMode < 3; ++arpMode)
     {
@@ -145,6 +156,54 @@ int main()
                        + (active ? "" : " (tile not lit)"));
         }
 
+    // Hear switches: each part on its own.
+    {
+        auto make = [&] (bool robot, bool voice, bool fx, float& peak)
+        {
+            VocoderProcessor proc;
+            proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
+            proc.prepareToPlay (sampleRate, blockSize);
+            EasySteps::set (proc.params, "robotOn", robot ? 1.0f : 0.0f);
+            EasySteps::set (proc.params, "voiceOn", voice ? 1.0f : 0.0f);
+            EasySteps::set (proc.params, "fxOn", fx ? 1.0f : 0.0f);
+            EasySteps::set (proc.params, "reverbMix", 0.5f);
+            bool finite = true;
+            run (proc, 10, finite); // let the level switches settle
+            peak = run (proc, 300, finite);
+            return finite;
+        };
+        float voiceOnly = 0, none = 0, noChordRobot = 0;
+        // No chord is playing, so the robot alone is silent and your voice alone is clearly heard.
+        bool ok = make (true, false, false, noChordRobot) && make (false, true, false, voiceOnly) && make (false, false, false, none);
+        check (ok && noChordRobot < 0.01f && voiceOnly > 0.2f && none < 0.01f,
+               "hear switches: robot alone (no chord) " + juce::String (noChordRobot, 3) + ", your voice alone "
+                   + juce::String (voiceOnly, 3) + ", nothing " + juce::String (none, 4));
+    }
+
+    // A new instance is just your raw voice, and the rhythm gate chops it with no robot.
+    {
+        VocoderProcessor proc;
+        proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
+        proc.prepareToPlay (sampleRate, blockSize);
+        bool finite = true;
+        const float raw = run (proc, 200, finite);
+        EasySteps::set (proc.params, "arpOn", 1.0f);
+        EasySteps::set (proc.params, "arpMode", 2.0f);
+        EasySteps::set (proc.params, "gatePattern", 1.0f); // eighths: on, off, on, off
+        // Over two bars of eighths, many blocks fall in the gaps and many in the open steps.
+        int quiet = 0, loud = 0;
+        run (proc, 10, finite);
+        for (int i = 0; i < 2 * 96000 / blockSize; ++i)
+        {
+            const float level = run (proc, 1, finite);
+            quiet += level < 0.02f ? 1 : 0;
+            loud += level > 0.1f ? 1 : 0;
+        }
+        check (finite && raw > 0.2f && quiet > 150 && loud > 150,
+               "raw voice by default (" + juce::String (raw, 3) + "), gate chops it with no robot: "
+                   + juce::String (loud) + " loud / " + juce::String (quiet) + " quiet blocks");
+    }
+
     // Effects tiles switch off again, back to the defaults.
     {
         VocoderProcessor proc;
@@ -188,7 +247,9 @@ int main()
             auto* p = proc.params.getParameter (id);
             p->setValueNotifyingHost (p->convertTo0to1 (v));
         };
+        robotOnly (proc);
         bool finite = true;
+        run (proc, 10, finite); // let the level switches settle
         const float silent = run (proc, 100, finite); // no notes yet: the vocoder stays quiet
         setIn ("singToPlay", 1.0f);
         setIn ("tuneOn", 1.0f);
@@ -205,6 +266,7 @@ int main()
         VocoderProcessor proc;
         proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
         proc.prepareToPlay (sampleRate, blockSize);
+        robotOnly (proc);
         auto* timing = proc.params.getParameter ("chordTiming");
         timing->setValueNotifyingHost (timing->convertTo0to1 (2.0f));
         bool finite = true;
