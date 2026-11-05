@@ -156,6 +156,22 @@ inline const std::vector<Preset>& all()
         { "Auto-Tune", "Pop Star",
           { { tuneOn, 1 }, { tuneSpeed, 5 }, { voiceOn, 1 }, { robotLevel, 0.35f }, { waveform, Wave::supersaw }, { detune, 10 }, { bands, 26 },
             { chorusMix, 0.35f }, { delayMix, 0.2f }, { delayTime, 3 }, { reverbMix, 0.3f } } },
+
+        // Vintage: an old mic and record. Added last so earlier program numbers stay the same.
+        { "Vintage", "1940s Crooner",
+          { { voiceOn, 1 }, { robotOn, 0 }, { vintageOn, 1 }, { vintageEra, 3 }, { reverbMix, 0.25f }, { reverbSize, 0.5f } } },
+        { "Vintage", "Gramophone Ghost",
+          { { voiceOn, 1 }, { robotOn, 0 }, { vintageOn, 1 }, { vintageEra, 1 }, { vintageWear, 0.7f }, { reverbMix, 0.3f },
+            { reverbSize, 0.7f } } },
+        { "Vintage", "Old Radio Robot",
+          { { vintageOn, 1 }, { vintageEra, 2 }, { waveform, Wave::saw }, { bands, 16 }, { sharpness, 1.6f }, { release, 40 } } },
+        { "Vintage", "Cassette Dream",
+          { { vintageOn, 1 }, { vintageEra, 7 }, { waveform, Wave::supersaw }, { detune, 25 }, { bands, 28 }, { carrierAttack, 150 },
+            { carrierRelease, 800 }, { chorusMix, 0.4f }, { reverbMix, 0.4f }, { reverbSize, 0.8f } } },
+        { "Vintage", "Boom Bap Vocal",
+          { { voiceOn, 1 }, { robotOn, 0 }, { vintageOn, 1 }, { vintageEra, 8 }, { delayMix, 0.2f }, { delayTime, 3 } } },
+        { "Vintage", "Phone Call",
+          { { voiceOn, 1 }, { robotOn, 0 }, { vintageOn, 1 }, { vintageEra, 9 } } },
     };
     return presets;
 }

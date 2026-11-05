@@ -61,20 +61,21 @@ Pick a view at the top right:
 - **Easy** builds a sound one step at a time with big buttons: **1 Voice** (Robot, Daft, Choir, Whisper,
   Monster, Chipmunk, Alien, Retro Game), **2 Chords** (Simple, Dreamy, Jazzy, Floaty, Tense, Sparkly, Rock,
   Huge), **3 Rhythm** (arps and gates), **4 Effects** (Echo, Space, Wide, Wobble, Wah, Crunch: turn on as many
-  as you like) and **5 Auto-Tune**. Each step has a few knobs to fine-tune it. Good for kids and quick ideas.
+  as you like), **5 Auto-Tune** and **6 Vintage**. Each step has a few knobs to fine-tune it. Good for kids and quick ideas.
 - **Studio** shows the main controls as knobs in coloured sections.
 - **Advanced** shows every setting as a list.
 
 A new Vocoder starts as just your **raw voice**. The **Your sound** bar above the chord buttons shows the
 chain your voice flows through, and each part switches on and off on its own:
 
-**Your voice → Auto-Tune → Robot → Rhythm → Effects**
+**Your voice → Auto-Tune → Robot → Rhythm → Effects → Vintage**
 
 - **Your voice** is your own voice from the mic (auto-tuned when Auto-Tune is on).
 - **Auto-Tune** snaps your voice to the notes of the key.
 - **Robot** is the vocoder: your words, played by the synth on the notes of your chord. It needs notes.
 - **Rhythm** chops everything into a beat (Rhythm Gate), or arpeggiates the robot's chord (Note Arp).
 - **Effects** adds echo, reverb, chorus and distortion to everything.
+- **Vintage** puts everything on an old record, as if sung into a microphone from another decade.
 
 Mix and match: auto-tune only, auto-tune and rhythm, robot and effects, and so on. The sliders next to
 Your voice and Robot set their levels. Presets switch on the parts they use.
@@ -96,13 +97,36 @@ of that scale, named like Cm7 or Fmaj7. Changing the type while a chord plays sw
   and **Full Chord** add harmony notes in your key. (In Chromatic, the harmony uses the major scale of the key.)
 - The strip under the knobs shows the note you're singing and how far off it is.
 
+## Vintage
+
+Pick an **Era** and everything you hear sounds like an old recording: the microphone's narrow, coloured
+tone, the grit of tubes or tape, and the record's hiss, crackle and wobble.
+
+| Era | Sounds like |
+| --- | --- |
+| 1900s Wax Cylinder | Tiny, honky, crackly and wobbly |
+| 1920s Gramophone | A 78 played through a horn |
+| 1930s Radio | An old broadcast, a little distorted, with hum |
+| 1940s Ribbon | The warm crooner sound, soft on top |
+| 1950s Tube | A tube mic on a vinyl single |
+| 1960s Tape | Warm, squashed tape with a little wobble |
+| 1970s Studio | Smooth analog studio, nearly full range |
+| 1980s Cassette | Hiss, wobble and dull highs |
+| 1990s Sampler | Gritty 12-bit beat sampler |
+| Telephone | Calling from far away |
+| Megaphone | Loud and bossy |
+
+**Wear** sets how worn the record is (hiss, crackle, hum and wobble; 0 is a brand new record) and **Amount**
+blends the old sound with today's. Vintage comes last, so the reverb and echo go onto the record too.
+
 ## Sounds (presets)
 
 The **Sound** menu (also in Logic's preset menu at the top of the plugin window) has ready-made starting
 points: Raw Voice, Classic Robot, French Touch, Choir Pad, Whisper Ghost, Trance Gate, Stutter Chop, Arp Robot,
 Acid Wobble, Auto-Wah Funk, Lo-Fi Radio, Monster, Chipmunk Bot, Space Echo, Hard Tune, Sing the Synth,
 Harmony Choir, Talk Box Funk, 80s Synth Pop, Underwater, Glitch Bot, Cathedral, Ice Crystal, Lullaby,
-Disco Bounce, Gallop Rider, Dubstep Growl and Pop Star, grouped by category. Choosing one resets the sound but leaves your input gain, gate, tempo, metronome, key, scale,
+Disco Bounce, Gallop Rider, Dubstep Growl, Pop Star, 1940s Crooner, Gramophone Ghost, Old Radio Robot,
+Cassette Dream, Boom Bap Vocal and Phone Call, grouped by category. Choosing one resets the sound but leaves your input gain, gate, tempo, metronome, key, scale,
 drone, chord settings and output level alone. Tweak from there; Logic
 saves your changes with the song.
 
@@ -144,6 +168,7 @@ saves your changes with the song.
 | Effects | Chorus Mix, Rate, Depth | Widens the sound in stereo |
 | Effects | Delay Mix, Time, Feedback, Ping-Pong | Tempo-synced echoes, bouncing left and right |
 | Effects | Reverb Mix, Size, Damping | Space, from a small room to a huge hall |
+| Vintage | Vintage On, Era, Wear, Vintage Amount | An old microphone and record, from the 1900s to the 1990s |
 | Output | Your Voice On, Robot On, Rhythm On, Effects On | Switch each part of the chain on or off |
 | Output | Robot Level, Voice Level, Output Gain | Levels for the robot and your (tuned) voice, and the final level (soft-clipped so it can't blast) |
 
@@ -172,4 +197,5 @@ The DSP tests also build without JUCE: `cmake -S . -B build -DVOCODER_TESTS_ONLY
 7. Unison, chord memory, phaser, limiter
 8. ~~Auto-tune, Sing to Play, designed interface~~
 9. ~~Easy mode, more chords and scales, more presets~~
-10. User presets, MIDI learn, live rig with the crate tools
+10. ~~Vintage microphones and records~~
+11. User presets, MIDI learn, live rig with the crate tools

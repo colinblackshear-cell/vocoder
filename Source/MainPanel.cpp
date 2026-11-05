@@ -263,11 +263,14 @@ MainPanel::MainPanel (VocoderProcessor& p)
     fx.addKnob (knob (delayMix, "Delay", "Tempo-synced echoes"));
     fx.addKnob (knob (reverbMix, "Reverb", "Space"));
 
-    mix.addKnob (knob (robotLevel, "Robot", "How loud the robot (vocoder) is"));
-    mix.addKnob (knob (voiceLevel, "Voice", "How loud your own voice is, auto-tuned if Auto-Tune is on"));
+    vintage.setOptionsOnTop (true);
+    vintage.addOption (choice (vintageEra, "Era", "Which old microphone and record you sing through"));
+    vintage.addKnob (knob (vintageWear, "Wear", "How worn the record is: hiss, crackle and wobble"));
+    vintage.addKnob (knob (vintageAmount, "Amount", "Blend between today's sound and the old record"));
+
     mix.addKnob (knob (outputGain, "Level", "Output level"));
 
-    for (auto* section : { &voice, &synth, &tune, &arp, &filter, &fx, &mix })
+    for (auto* section : { &voice, &synth, &tune, &arp, &filter, &fx, &vintage, &mix })
         addAndMakeVisible (section);
 }
 
@@ -288,7 +291,7 @@ void MainPanel::resized()
             s->setBounds (row.removeFromLeft (juce::roundToInt (w * unit)));
     };
     lay (top, { { &voice, 3.3f }, { &synth, 4.4f }, { &tune, 4.3f } });
-    lay (bottom, { { &arp, 2.0f }, { &filter, 3.6f }, { &fx, 3.6f }, { &mix, 3.0f } });
+    lay (bottom, { { &arp, 2.0f }, { &filter, 3.6f }, { &fx, 3.6f }, { &vintage, 2.35f }, { &mix, 1.45f } });
 }
 
 //==============================================================================
@@ -307,6 +310,7 @@ ListenBar::ListenBar (VocoderProcessor& p)
         { ParamIDs::robotOn, "Robot", "The vocoder: your words played by the synth, on the notes of your chord", Palette::voice },
         { ParamIDs::arpOn, "Rhythm", "The rhythm gate chops your sound into a beat; the note arp plays the robot's chord", Palette::arp },
         { ParamIDs::fxOn, "Effects", "Echo, reverb, chorus and distortion on everything", Palette::fx },
+        { ParamIDs::vintageOn, "Vintage", "Puts everything on an old record, sung into a mic from another decade", Palette::vintage },
     };
     for (int i = 0; i < numParts; ++i)
     {
@@ -375,8 +379,8 @@ void ListenBar::resized()
     title.setBounds (area.removeFromLeft (80));
 
     const int gap = 22;
-    const int sliderWidth = juce::jlimit (50, 100, (area.getWidth() - 5 * 92 - 4 * gap) / 2);
-    const int buttonWidth = juce::jmin (100, (area.getWidth() - 2 * sliderWidth - 4 * gap) / numParts);
+    const int sliderWidth = juce::jlimit (50, 100, (area.getWidth() - numParts * 88 - (numParts - 1) * gap) / 2);
+    const int buttonWidth = juce::jmin (100, (area.getWidth() - 2 * sliderWidth - (numParts - 1) * gap) / numParts);
     for (int i = 0; i < numParts; ++i)
     {
         parts[i].button.setBounds (area.removeFromLeft (buttonWidth));

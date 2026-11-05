@@ -18,6 +18,7 @@ inline const juce::Colour tune { 0xffff5d9e };
 inline const juce::Colour arp { 0xffffb547 };
 inline const juce::Colour filter { 0xff47a8ff };
 inline const juce::Colour fx { 0xff7fdc8a };
+inline const juce::Colour vintage { 0xffd2a679 };
 inline const juce::Colour mix { 0xffd8dde6 };
 inline const juce::Colour record { 0xffe5484d };
 } // namespace Palette

@@ -54,6 +54,8 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     delay.prepare (sampleRate);
     reverb.setSampleRate (sampleRate);
     reverb.reset();
+    vintage.prepare (sampleRate);
+    vintageMix.reset (sampleRate, 0.03);
     clickDecay = (float) std::exp (-1.0 / (0.015 * sampleRate));
 
     inputGain.reset (sampleRate, 0.02);
@@ -70,6 +72,7 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     voiceGain.setCurrentAndTargetValue (voiceGain.getTargetValue());
     resonance.setCurrentAndTargetValue (resonance.getTargetValue());
     cutoff.setCurrentAndTargetValue (cutoff.getTargetValue());
+    vintageMix.setCurrentAndTargetValue (vintageMix.getTargetValue());
 }
 
 VocoderProcessor::Timing VocoderProcessor::readTiming()
@@ -202,6 +205,9 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     robotGain.setTargetValue (raw (params, ParamIDs::robotOn) > 0.5f ? raw (params, ParamIDs::robotLevel) : 0.0f);
     voiceGain.setTargetValue (raw (params, ParamIDs::voiceOn) > 0.5f ? raw (params, ParamIDs::voiceLevel) : 0.0f);
     fxOn = raw (params, ParamIDs::fxOn) > 0.5f;
+    vintageMix.setTargetValue (raw (params, ParamIDs::vintageOn) > 0.5f ? raw (params, ParamIDs::vintageAmount) : 0.0f);
+    vintageEra = index (params, ParamIDs::vintageEra);
+    vintageWear = raw (params, ParamIDs::vintageWear);
 }
 
 void VocoderProcessor::handleMidi (const juce::MidiMessage& message)
@@ -452,6 +458,14 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             delay.process (left, right);
             if (reverbMix > 0.0f)
                 reverb.processStereo (&left, &right, 1);
+        }
+
+        // Last, the whole sound goes onto an old record (reverb and all, like a real old room).
+        if (vintageMix.isSmoothing() || vintageMix.getTargetValue() > 0.0f)
+        {
+            const float amount = vintageMix.getNextValue();
+            vintage.set (vintageEra, vintageWear, amount);
+            vintage.process (left, right);
         }
 
         const float gain = outputGain.getNextValue();

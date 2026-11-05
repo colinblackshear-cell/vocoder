@@ -2,7 +2,7 @@
 
 namespace
 {
-const juce::Colour stepColours[] = { Palette::voice, Palette::filter, Palette::arp, Palette::fx, Palette::tune };
+const juce::Colour stepColours[] = { Palette::voice, Palette::filter, Palette::arp, Palette::fx, Palette::tune, Palette::vintage };
 } // namespace
 
 //==============================================================================
@@ -147,11 +147,16 @@ void EasyPanel::buildStep()
             knob (drive, "Crunch", "How gritty");
             knob (voiceLevel, "Your voice", "How loud your own voice is");
             break;
-        default:
+        case 4:
             extras.push_back (std::make_unique<TunerDisplay> (processor));
             knob (tuneSpeed, "Speed", "0 is the hard robot snap, higher sounds natural");
             knob (voiceLevel, "Your voice", "How loud your own tuned voice is");
             knob (robotLevel, "Robot", "How loud the robot is");
+            break;
+        default:
+            knob (vintageWear, "Wear", "How worn the record is: hiss, crackle and wobble");
+            knob (vintageAmount, "Amount", "Blend between today's sound and the old record");
+            knob (voiceLevel, "Your voice", "How loud your own voice is");
             break;
     }
     for (auto& e : extras)

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dsp/Vintage.h"
+
 #include <juce_audio_processors/juce_audio_processors.h>
 
 namespace ParamIDs
@@ -77,6 +79,11 @@ inline constexpr auto delayPingPong = "delayPingPong";
 inline constexpr auto reverbMix = "reverbMix";
 inline constexpr auto reverbSize = "reverbSize";
 inline constexpr auto reverbDamping = "reverbDamping";
+
+inline constexpr auto vintageOn = "vintageOn";
+inline constexpr auto vintageEra = "vintageEra";
+inline constexpr auto vintageWear = "vintageWear";
+inline constexpr auto vintageAmount = "vintageAmount";
 
 inline constexpr auto robotOn = "robotOn";
 inline constexpr auto voiceOn = "voiceOn";
@@ -234,6 +241,16 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         real (ParamIDs::reverbMix, "Reverb Mix", { 0.0f, 1.0f, 0.01f }, 0.0f, ""),
         real (ParamIDs::reverbSize, "Reverb Size", { 0.0f, 1.0f, 0.01f }, 0.6f, ""),
         real (ParamIDs::reverbDamping, "Reverb Damping", { 0.0f, 1.0f, 0.01f }, 0.5f, "")));
+
+    juce::StringArray eraNames;
+    for (const auto& era : vox::Vintage::eras)
+        eraNames.add (era.name);
+    layout.add (std::make_unique<Group> (
+        "vintage", "Vintage", "|",
+        toggle (ParamIDs::vintageOn, "Vintage On", false),
+        choice (ParamIDs::vintageEra, "Era", eraNames, 3),
+        real (ParamIDs::vintageWear, "Wear", { 0.0f, 1.0f, 0.01f }, 0.5f, ""),
+        real (ParamIDs::vintageAmount, "Vintage Amount", { 0.0f, 1.0f, 0.01f }, 1.0f, "")));
 
     layout.add (std::make_unique<Group> (
         "output", "Output", "|",
