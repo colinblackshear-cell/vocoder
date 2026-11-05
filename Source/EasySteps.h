@@ -117,6 +117,24 @@ inline const std::vector<Step>& all()
               { "Sing to Play", "Your melody plays the synth", { { tuneOn, 1 }, { tuneSpeed, 10 }, { singToPlay, 1 } } },
               { "Harmony", "Sing one note, hear a chord", { { tuneOn, 1 }, { tuneSpeed, 20 }, { singToPlay, 3 } } },
           } },
+
+        { "Vintage",
+          "Sing into a microphone from another time. Everything you hear goes onto an old record.",
+          { vintageOn, vintageEra },
+          {
+              { "Today", "Clean and modern", {} },
+              { "1900s", "Wax cylinder: tiny, crackly and wobbly", { { vintageOn, 1 }, { vintageEra, 0 } } },
+              { "1920s", "Gramophone record, played on a horn", { { vintageOn, 1 }, { vintageEra, 1 } } },
+              { "1930s", "Old radio broadcast", { { vintageOn, 1 }, { vintageEra, 2 } } },
+              { "1940s", "Ribbon mic: the warm crooner sound", { { vintageOn, 1 }, { vintageEra, 3 } } },
+              { "1950s", "Tube mic on a vinyl single", { { vintageOn, 1 }, { vintageEra, 4 } } },
+              { "1960s", "Warm tape, like the classic studios", { { vintageOn, 1 }, { vintageEra, 5 } } },
+              { "1970s", "Smooth analog studio", { { vintageOn, 1 }, { vintageEra, 6 } } },
+              { "1980s", "Cassette tape with hiss and wobble", { { vintageOn, 1 }, { vintageEra, 7 } } },
+              { "1990s", "Gritty 12-bit beat sampler", { { vintageOn, 1 }, { vintageEra, 8 } } },
+              { "Telephone", "Calling from far away", { { vintageOn, 1 }, { vintageEra, 9 } } },
+              { "Megaphone", "Loud and bossy", { { vintageOn, 1 }, { vintageEra, 10 } } },
+          } },
     };
     return steps;
 }

@@ -5,6 +5,7 @@
 #include "../Source/dsp/CarrierSynth.h"
 #include "../Source/dsp/Effects.h"
 #include "../Source/dsp/Filter.h"
+#include "../Source/dsp/Vintage.h"
 #include "../Source/dsp/Vocoder.h"
 
 #include <cstdio>
@@ -540,6 +541,84 @@ void testChords()
                 }
     check (ok, "every chord in every key, scale and flavour is in range");
 }
+void testVintage()
+{
+    using V = vox::Vintage;
+
+    // Level of a tone through one era, after the filters settle.
+    auto level = [] (int era, double hz, float wear = 0.5f, float amount = 1.0f, float in = 0.3f)
+    {
+        V v;
+        v.prepare (sr);
+        v.set (era, wear, amount);
+        double phase = 0.0;
+        auto next = [&]
+        {
+            float l = in * sine (phase, hz), r = l;
+            v.process (l, r);
+            return 0.5f * (l + r);
+        };
+        rms (next, 9600);
+        return rms (next, 24000);
+    };
+
+    // A voice-like buzz: a 160 Hz tone and its harmonics, softer as they go up.
+    auto voiceLevel = [] (int era)
+    {
+        V v;
+        v.prepare (sr);
+        v.set (era, 0.5f, 1.0f);
+        double phase = 0.0;
+        auto buzz = [&]
+        {
+            float x = 0.0f;
+            for (int k = 1; k <= 40; ++k)
+                x += (float) std::sin (phase * k) / (float) k;
+            phase += 2.0 * vox::pi * 160.0 / sr;
+            return 0.2f * x;
+        };
+        double dry = 0.0, wet = 0.0;
+        for (int i = 0; i < 33600; ++i)
+        {
+            const float x = buzz();
+            float l = x, r = x;
+            v.process (l, r);
+            if (i >= 9600)
+            {
+                dry += x * x;
+                wet += l * l;
+            }
+        }
+        return std::sqrt (wet / dry);
+    };
+
+    bool sane = true, finite = true;
+    for (int era = 0; era < V::numEras; ++era)
+    {
+        const double through = level (era, 1000.0);
+        const double ratio = voiceLevel (era);
+        std::printf ("      voice %+.1f dB  ", 20.0 * std::log10 (ratio));
+        finite = finite && std::isfinite (through);
+        sane = sane && ratio > 0.7 && ratio < 1.4; // within about 3 dB of the dry voice
+        std::printf ("      %-20s 1 kHz %+.1f dB, 100 Hz %+.1f dB, 8 kHz %+.1f dB\n", V::eras[era].name, 20.0 * std::log10 (through / (0.3 / std::sqrt (2.0))),
+                     20.0 * std::log10 (level (era, 100.0) / (0.3 / std::sqrt (2.0))),
+                     20.0 * std::log10 (level (era, 8000.0) / (0.3 / std::sqrt (2.0))));
+    }
+    check (finite, "every vintage era stays finite");
+    check (sane, "every vintage era keeps a voice at a similar level");
+
+    check (level (9, 100.0) < 0.1 * level (9, 1000.0), "the telephone loses the lows");
+    check (level (0, 8000.0) < 0.1 * level (0, 1000.0), "the wax cylinder loses the highs");
+    check (level (6, 8000.0) > 0.5 * level (6, 1000.0), "the 70s studio keeps the highs");
+
+    // Amount 0 leaves the sound alone.
+    check (std::abs (level (0, 1000.0, 0.5f, 0.0f) - 0.3 / std::sqrt (2.0)) < 1.0e-3, "vintage amount 0 is the clean sound");
+
+    // The record's noise: there when worn, gone when new, and never loud.
+    const double worn = level (1, 1000.0, 1.0f, 1.0f, 0.0f), fresh = level (1, 1000.0, 0.0f, 1.0f, 0.0f);
+    check (worn > 1.0e-3 && worn < 0.05, "a worn gramophone crackles and hisses quietly");
+    check (fresh < 1.0e-5, "an unworn record is silent between words");
+}
 } // namespace
 
 int main()
@@ -554,6 +633,7 @@ int main()
     testEffects();
     testAutoTune();
     testChords();
+    testVintage();
     std::printf ("\n%s\n", failures == 0 ? "All tests passed" : "Some tests failed");
     return failures == 0 ? 0 : 1;
 }

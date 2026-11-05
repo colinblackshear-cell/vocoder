@@ -35,6 +35,34 @@ public:
         a2 = (float) ((1.0 - alpha) / a0);
     }
 
+    void setLowPass (double sampleRate, double frequency, double q)
+    {
+        const double w0 = 2.0 * pi * frequency / sampleRate;
+        const double cosw = std::cos (w0);
+        const double alpha = std::sin (w0) / (2.0 * q);
+        const double a0 = 1.0 + alpha;
+        b0 = (float) (((1.0 - cosw) / 2.0) / a0);
+        b1 = (float) ((1.0 - cosw) / a0);
+        b2 = b0;
+        a1 = (float) (-2.0 * cosw / a0);
+        a2 = (float) ((1.0 - alpha) / a0);
+    }
+
+    // A bell boost or cut of `gainDb` around `frequency`.
+    void setPeak (double sampleRate, double frequency, double q, double gainDb)
+    {
+        const double a = std::pow (10.0, gainDb / 40.0);
+        const double w0 = 2.0 * pi * frequency / sampleRate;
+        const double cosw = std::cos (w0);
+        const double alpha = std::sin (w0) / (2.0 * q);
+        const double a0 = 1.0 + alpha / a;
+        b0 = (float) ((1.0 + alpha * a) / a0);
+        b1 = (float) (-2.0 * cosw / a0);
+        b2 = (float) ((1.0 - alpha * a) / a0);
+        a1 = b1;
+        a2 = (float) ((1.0 - alpha / a) / a0);
+    }
+
     void reset() { z1 = z2 = 0.0f; }
 
     float process (float x)

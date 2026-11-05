@@ -5,6 +5,7 @@
 #include "dsp/CarrierSynth.h"
 #include "dsp/Effects.h"
 #include "dsp/Filter.h"
+#include "dsp/Vintage.h"
 #include "dsp/Vocoder.h"
 #include "Recorder.h"
 
@@ -95,6 +96,10 @@ private:
     vox::Chorus chorus;
     vox::StereoDelay delay;
     juce::Reverb reverb;
+    vox::Vintage vintage;
+    juce::SmoothedValue<float> vintageMix;
+    int vintageEra = 3;
+    float vintageWear = 0.5f;
 
     juce::SmoothedValue<float> inputGain, outputGain, robotGain, voiceGain, resonance;
     bool fxOn = true;

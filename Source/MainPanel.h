@@ -87,11 +87,11 @@ public:
 private:
     Section voice { "VOICE", Palette::voice }, synth { "SYNTH", Palette::synth }, tune { "AUTO-TUNE", Palette::tune },
         arp { "ARP", Palette::arp }, filter { "FILTER", Palette::filter }, fx { "EFFECTS", Palette::fx },
-        mix { "MIX", Palette::mix };
+        vintage { "VINTAGE", Palette::vintage }, mix { "OUTPUT", Palette::mix };
 };
 
 // Your sound as a chain of modules: Your voice, Auto-Tune, Robot, Rhythm,
-// Effects. Each switches on and off on its own, so you can start from your
+// Effects, Vintage. Each switches on and off on its own, so you can start from your
 // raw voice and add only what you want. Shown in every view.
 class ListenBar : public juce::Component
 {
@@ -101,7 +101,7 @@ public:
     void paint (juce::Graphics&) override;
 
 private:
-    static constexpr int numParts = 5;
+    static constexpr int numParts = 6;
 
     struct Part
     {
