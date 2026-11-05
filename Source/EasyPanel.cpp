@@ -110,7 +110,11 @@ void EasyPanel::buildStep()
         tile->onClick = [this, t]
         {
             const auto& st = EasySteps::all()[(size_t) step];
-            EasySteps::apply (processor.params, st, st.tiles[t]);
+            // In a pick-one step, clicking the lit tile again switches it off (back to the first tile).
+            if (! st.switches && ! st.group.empty() && t > 0 && EasySteps::isActive (processor.params, st, st.tiles[t]))
+                EasySteps::apply (processor.params, st, st.tiles.front());
+            else
+                EasySteps::apply (processor.params, st, st.tiles[t]);
             timerCallback();
         };
         addAndMakeVisible (tile);

@@ -240,6 +240,25 @@ int main()
                "the Raw tile brings your voice back after a robot preset");
     }
 
+    // From your raw voice, an arp tile or a chord type switches the robot on, since only the robot plays notes.
+    {
+        VocoderProcessor proc;
+        const auto& rhythm = EasySteps::all()[2];
+        const auto& chords = EasySteps::all()[1];
+        bool ok = true;
+        for (const auto& tile : rhythm.tiles)
+        {
+            proc.setCurrentProgram (0);
+            EasySteps::apply (proc.params, rhythm, tile);
+            const bool noteArp = EasySteps::value (proc.params, "arpMode") > 0.5f && EasySteps::value (proc.params, "arpMode") < 1.5f;
+            ok = ok && (! noteArp || EasySteps::value (proc.params, "robotOn") > 0.5f);
+        }
+        proc.setCurrentProgram (0);
+        EasySteps::apply (proc.params, chords, chords.tiles[1]);
+        ok = ok && EasySteps::value (proc.params, "robotOn") > 0.5f;
+        check (ok, "arp tiles and chord types switch the robot on");
+    }
+
     // Presets leave performance settings alone and reset the rest.
     {
         VocoderProcessor proc;

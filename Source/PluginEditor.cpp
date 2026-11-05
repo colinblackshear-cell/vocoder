@@ -409,6 +409,12 @@ void ChordPad::toggleChord (int index)
     // The processor snaps the change to the next beat or bar (Chord Timing).
     const bool wasActive = activeChord == index;
     activeChord = wasActive ? -1 : index;
+
+    // Chords are played by the robot, so switch it on to hear them.
+    auto& s = processor.params;
+    if (! wasActive && s.getRawParameterValue (ParamIDs::robotOn)->load() < 0.5f)
+        if (auto* robot = s.getParameter (ParamIDs::robotOn))
+            robot->setValueNotifyingHost (1.0f);
     processor.requestChord (wasActive ? juce::Array<int>() : notesFor (index));
     relabel();
 }
