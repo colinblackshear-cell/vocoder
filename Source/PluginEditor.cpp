@@ -413,6 +413,16 @@ void ChordPad::toggleChord (int index)
     relabel();
 }
 
+void ChordPad::playIfSilent()
+{
+    if (activeChord >= 0)
+        return;
+    for (int note = 0; note < 128; ++note)
+        if (processor.keyboardState.isNoteOnForChannels (0xffff, note))
+            return;
+    toggleChord (0);
+}
+
 void ChordPad::stopAll()
 {
     activeChord = -1;
@@ -548,6 +558,8 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     addChildComponent (mainPanel);
     addChildComponent (controls);
     addAndMakeVisible (listenBar);
+    robotWasOn = p.params.getRawParameterValue (ParamIDs::robotOn)->load() > 0.5f;
+    robotWatch.startTimer (100);
     presetBar.onViewChosen = [this] (int view) { showView (view); };
     showView ((int) p.params.state.getProperty ("view", 0)); // new instances start in Easy
     keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffe9ecf2));
@@ -649,6 +661,17 @@ bool VocoderEditor::keyPressed (const juce::KeyPress& key)
 void VocoderEditor::paint (juce::Graphics& g)
 {
     g.fillAll (background);
+}
+
+// However the robot gets switched on (the bar, a tile, a preset), give it notes so it's heard.
+void VocoderEditor::checkRobot()
+{
+    auto& s = processor.params;
+    const bool robot = s.getRawParameterValue (ParamIDs::robotOn)->load() > 0.5f;
+    const bool singing = s.getRawParameterValue (ParamIDs::singToPlay)->load() > 0.5f;
+    if (robot && ! robotWasOn && ! singing)
+        chordPad.playIfSilent();
+    robotWasOn = robot;
 }
 
 void VocoderEditor::resized()

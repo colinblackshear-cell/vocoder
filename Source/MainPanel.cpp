@@ -339,6 +339,37 @@ ListenBar::ListenBar (VocoderProcessor& p)
     voiceLevel.setColour (juce::Slider::trackColourId, Palette::tune);
     robotLevel.setColour (juce::Slider::trackColourId, Palette::voice);
 
+    // Switching a part on should always be heard, so fill in what it needs:
+    // auto-tune needs your voice, rhythm needs a mode (the editor gives the robot notes),
+    // and effects need at least one effect turned up.
+    auto& state = p.params;
+    auto value = [&state] (const char* id) { return state.getRawParameterValue (id)->load(); };
+    auto set = [&state] (const char* id, float v)
+    {
+        if (auto* param = state.getParameter (id))
+            param->setValueNotifyingHost (param->convertTo0to1 (v));
+    };
+    parts[1].button.onClick = [this, value, set]
+    {
+        if (parts[1].button.getToggleState() && value (ParamIDs::voiceOn) < 0.5f && value (ParamIDs::singToPlay) < 0.5f)
+            set (ParamIDs::voiceOn, 1.0f);
+    };
+    parts[3].button.onClick = [this, value, set]
+    {
+        if (parts[3].button.getToggleState() && value (ParamIDs::arpMode) < 0.5f)
+            set (ParamIDs::arpMode, 2.0f); // Rhythm Gate: works on your voice and the robot
+    };
+    parts[4].button.onClick = [this, value, set]
+    {
+        if (! parts[4].button.getToggleState())
+            return;
+        bool any = false;
+        for (auto* id : { ParamIDs::drive, ParamIDs::crush, ParamIDs::chorusMix, ParamIDs::delayMix, ParamIDs::reverbMix })
+            any = any || value (id) > 0.001f;
+        if (! any)
+            set (ParamIDs::reverbMix, 0.3f);
+    };
+
     // A part's level slider fades while the part is switched off.
     parts[0].button.onStateChange = [this] { voiceLevel.setAlpha (parts[0].button.getToggleState() ? 1.0f : 0.35f); };
     parts[2].button.onStateChange = [this] { robotLevel.setAlpha (parts[2].button.getToggleState() ? 1.0f : 0.35f); };

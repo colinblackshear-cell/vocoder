@@ -39,7 +39,7 @@ inline const std::vector<Step>& all()
             carrierRelease, pulseWidth, pwmDepth, osc2Wave, osc2Semitones, osc2Fine, osc2Level, subLevel, glide,
             vibratoRate, vibratoDepth },
           {
-              { "Raw", "Just your own voice, no robot", { { robotOn, 0 } } },
+              { "Raw", "Just your own voice, no robot", { { robotOn, 0 }, { voiceOn, 1 } } },
               { "Robot", "The classic talking machine", { { robotOn, 1 }, { bands, 16 }, { sharpness, 1.6f }, { release, 40 } } },
               { "Daft", "Smooth French disco robot",
                 { { robotOn, 1 }, { waveform, 2 }, { detune, 14 }, { bands, 24 }, { attack, 3 }, { release, 50 }, { osc2Semitones, 12 },
@@ -166,8 +166,9 @@ inline bool isActive (juce::AudioProcessorValueTreeState& state, const Step& ste
         return std::abs (value (state, id) - v) <= range * 0.002f + 1.0e-4f;
     };
 
+    // An effect only counts as on while the Effects part is switched on too.
     if (step.switches)
-        return matches (tile.values.front().first, tile.values.front().second);
+        return matches (tile.values.front().first, tile.values.front().second) && value (state, ParamIDs::fxOn) > 0.5f;
 
     for (const auto& [id, v] : tile.values)
         if (! matches (id, v))

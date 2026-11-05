@@ -219,6 +219,27 @@ int main()
         check (ok, "easy effects tiles turn on and off");
     }
 
+    // Switches never get stuck: an effect tile whose settings are there while Effects is
+    // switched off shows as off, and clicking it switches Effects back on.
+    {
+        VocoderProcessor proc;
+        const auto& fx = EasySteps::all()[3];
+        const auto& echo = fx.tiles.front();
+        EasySteps::apply (proc.params, fx, echo);
+        EasySteps::set (proc.params, "fxOn", 0.0f);
+        bool ok = ! EasySteps::isActive (proc.params, fx, echo);
+        EasySteps::apply (proc.params, fx, echo);
+        ok = ok && EasySteps::isActive (proc.params, fx, echo) && EasySteps::value (proc.params, "fxOn") > 0.5f;
+        check (ok, "an effect tile switches Effects back on");
+
+        // After a robot preset (your voice off), the Raw tile brings your voice back.
+        proc.setCurrentProgram (1);
+        const auto& voiceStep = EasySteps::all()[0];
+        EasySteps::apply (proc.params, voiceStep, voiceStep.tiles.front());
+        check (EasySteps::value (proc.params, "voiceOn") > 0.5f && EasySteps::value (proc.params, "robotOn") < 0.5f,
+               "the Raw tile brings your voice back after a robot preset");
+    }
+
     // Presets leave performance settings alone and reset the rest.
     {
         VocoderProcessor proc;

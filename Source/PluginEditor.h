@@ -79,6 +79,8 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
     void stopAll();
+    // Plays the key's own chord if nothing is playing, so a robot switched on is heard straight away.
+    void playIfSilent();
 
 private:
     static constexpr int numChords = 7;
@@ -150,6 +152,9 @@ private:
     ListenBar listenBar;
     LatchKeyboard keyboard;
     ChordPad chordPad;
+    void checkRobot();
+    juce::TimedCallback robotWatch { [this] { checkRobot(); } };
+    bool robotWasOn = false;
     juce::TextButton octaveDown { "Oct -" }, octaveUp { "Oct +" };
     juce::Label keyHint;
     int keyOctave = 5;
