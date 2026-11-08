@@ -87,6 +87,7 @@ public:
         bool robotOn = false;
         bool robotHasNotes = false; // chord, keys, drone or Sing to Play
         bool fillGaps = true;       // let your voice stand in while the robot has no notes
+        bool robotPlayingNow = true; // false between a note arp's steps
     };
 
     // `voice` is your voice as it goes into the vocoder; `robot` is the vocoder's raw output.
@@ -94,7 +95,9 @@ public:
     float process (float voice, float robot, const Switches& s)
     {
         const bool robotSounding = s.robotOn && s.robotHasNotes;
-        const float robotGain = match.process (voice, robot, s.robotHasNotes);
+        // Learn the robot's level only while it's actually playing, so the gaps in a
+        // note arp don't make it turn the notes up.
+        const float robotGain = match.process (voice, robot, s.robotHasNotes && s.robotPlayingNow);
 
         silentFor = robotSounding ? 0 : std::min (silentFor + 1, holdSamples);
 

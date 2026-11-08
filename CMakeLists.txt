@@ -75,3 +75,17 @@ target_link_libraries(PluginSmokeTest PRIVATE
     juce::juce_recommended_config_flags
     juce::juce_recommended_warning_flags)
 add_test(NAME plugin_smoke COMMAND PluginSmokeTest)
+
+# Every sound and combination stays clearly audible at a sensible level (needs JUCE).
+juce_add_console_app(SoundMatrix PRODUCT_NAME "SoundMatrix")
+target_sources(SoundMatrix PRIVATE tests/SoundMatrix.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp Source/MainPanel.cpp Source/EasyPanel.cpp)
+target_compile_definitions(SoundMatrix PRIVATE
+    JucePlugin_Name="Vocoder"
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0)
+target_link_libraries(SoundMatrix PRIVATE
+    juce::juce_audio_utils
+    juce::juce_dsp
+    juce::juce_recommended_config_flags
+    juce::juce_recommended_warning_flags)
+add_test(NAME sound_matrix COMMAND SoundMatrix)

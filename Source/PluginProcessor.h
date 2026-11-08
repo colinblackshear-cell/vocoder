@@ -103,7 +103,8 @@ private:
     std::atomic<int> uiTargetNote { -1 };
 
     vox::SmartMix smartMix;
-    vox::LoudnessMatch driveMatch;
+    vox::LoudnessMatch driveMatch, filterMatch, vintageMatch, reverbMatch;
+    juce::SmoothedValue<float> bothBlend;
     std::atomic<bool> uiVoiceStandIn { false };
     std::atomic<float> uiOutputLevel { 0.0f };
     std::atomic<int> soundChanges { 0 };

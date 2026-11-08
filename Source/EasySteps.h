@@ -206,6 +206,11 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Step& step, 
     for (const auto& [id, v] : tile.values)
         set (state, id, v);
 
+    // Picking a robot voice means hearing the robot instead of your voice, like the presets.
+    // (Your voice can still be added back in the chain bar, and comes in by itself with no chord.)
+    if (juce::String (step.title) == "Voice" && value (state, ParamIDs::robotOn) > 0.5f)
+        set (state, ParamIDs::voiceOn, 0.0f);
+
     // Auto-tune follows the chord buttons' key and scale, so your voice and chords agree.
     if (juce::String (step.title) == "Auto-Tune" && ! tile.values.empty())
     {
