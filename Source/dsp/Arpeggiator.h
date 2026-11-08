@@ -161,6 +161,8 @@ public:
     }
 
     int getPlayingNote() const { return playingNote; }
+    bool hasNotes() const { return heldCount > 0; }
+    bool isNoteMode() const { return settings.mode == ArpMode::notes; }
 
 private:
     int nextNote()

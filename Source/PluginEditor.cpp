@@ -12,7 +12,8 @@ constexpr int keyboardHeight = 90;
 constexpr int keyboardToolsHeight = 28;
 constexpr int chordPadHeight = 82;
 constexpr int numWhiteKeys = 36; // C2 to C7
-constexpr int presetBarHeight = 44;
+constexpr int presetBarHeight = 48;
+constexpr int cheekWidth = 14; // walnut side panels
 const auto background = Palette::background;
 const auto recordRed = Palette::record;
 } // namespace
@@ -86,9 +87,7 @@ LiveBar::~LiveBar()
 
 void LiveBar::paint (juce::Graphics& g)
 {
-    g.fillAll (Palette::panel);
-    g.setColour (Palette::panelEdge);
-    g.fillRect (0, getHeight() - 1, getWidth(), 1);
+    Gear::drawFaceplate (g, getLocalBounds().toFloat().reduced (1.0f), Palette::record, {}, false);
 }
 
 void LiveBar::resized()
@@ -346,9 +345,7 @@ ChordPad::ChordPad (VocoderProcessor& p, LatchKeyboard& k)
 
 void ChordPad::paint (juce::Graphics& g)
 {
-    g.fillAll (Palette::panel);
-    g.setColour (Palette::panelEdge);
-    g.fillRect (0, 0, getWidth(), 1);
+    Gear::drawFaceplate (g, getLocalBounds().toFloat().reduced (1.0f), Palette::filter, {}, false);
 }
 
 void ChordPad::resized()
@@ -438,8 +435,9 @@ void ChordPad::stopAll()
 }
 
 //==============================================================================
-PresetBar::PresetBar (VocoderProcessor& p) : processor (p)
+PresetBar::PresetBar (VocoderProcessor& p) : processor (p), meter (p)
 {
+    addAndMakeVisible (meter);
     // Grouped by category, in the order categories first appear.
     const auto& presets = Presets::all();
     juce::StringArray categories;
@@ -457,7 +455,7 @@ PresetBar::PresetBar (VocoderProcessor& p) : processor (p)
     prevButton.onClick = [this] { choose (processor.getCurrentProgram() - 1); };
     nextButton.onClick = [this] { choose (processor.getCurrentProgram() + 1); };
 
-    title.setFont (juce::FontOptions (12.0f));
+    title.setFont (Gear::engraved (11.0f));
     title.setColour (juce::Label::textColourId, Palette::dim);
     title.setJustificationType (juce::Justification::centredRight);
     const char* viewTips[] = { "Build a sound step by step with big buttons", "The main controls as knobs",
@@ -467,7 +465,7 @@ PresetBar::PresetBar (VocoderProcessor& p) : processor (p)
         auto& b = viewButtons[i];
         b.setClickingTogglesState (false);
         b.setTooltip (viewTips[i]);
-        b.setColour (juce::TextButton::buttonOnColourId, Palette::synth.withAlpha (0.75f));
+        b.setColour (juce::TextButton::buttonOnColourId, Palette::arp);
         b.setConnectedEdges ((i > 0 ? juce::Button::ConnectedOnLeft : 0) | (i < 2 ? juce::Button::ConnectedOnRight : 0));
         b.onClick = [this, i]
         {
@@ -500,35 +498,40 @@ void PresetBar::timerCallback()
 
 void PresetBar::paint (juce::Graphics& g)
 {
-    g.fillAll (Palette::background);
+    using namespace juce;
+    Gear::drawFaceplate (g, getLocalBounds().toFloat().reduced (1.0f), Palette::arp, {}, false);
 
-    // Wordmark: a small row of "bands" and the name.
-    auto area = getLocalBounds().reduced (14, 0);
-    const float heights[] = { 0.35f, 0.7f, 1.0f, 0.55f, 0.85f, 0.45f, 0.65f };
-    const juce::Colour colours[] = { Palette::voice, Palette::filter, Palette::synth, Palette::tune, Palette::arp,
-                                     Palette::fx, Palette::voice };
-    const float barArea = 18.0f, midY = (float) getHeight() * 0.5f;
-    for (int i = 0; i < 7; ++i)
+    // Name badge: a chrome plate with engraved letters, and a stripe of module colours.
+    auto badge = Rectangle<float> (12.0f, 8.0f, 128.0f, (float) getHeight() - 16.0f);
+    g.setColour (Colours::black.withAlpha (0.6f));
+    g.fillRoundedRectangle (badge.translated (0.0f, 1.5f), 3.0f);
+    g.setGradientFill (ColourGradient (Palette::metal.brighter (0.3f), badge.getX(), badge.getY(), Palette::metal.darker (0.7f),
+                                       badge.getX(), badge.getBottom(), false));
+    g.fillRoundedRectangle (badge, 3.0f);
+    g.setColour (Colours::black.withAlpha (0.5f));
+    g.drawRoundedRectangle (badge, 3.0f, 0.8f);
+    const Colour stripes[] = { Palette::tune, Palette::arp, Palette::fx, Palette::voice, Palette::filter };
+    const float stripeWidth = 4.0f;
+    for (int i = 0; i < 5; ++i)
     {
-        const float h = barArea * heights[i];
-        g.setColour (colours[i]);
-        g.fillRoundedRectangle ((float) area.getX() + (float) i * 5.0f, midY - h * 0.5f, 3.0f, h, 1.5f);
+        g.setColour (stripes[i]);
+        g.fillRect (badge.getRight() - 8.0f - stripeWidth * (float) (5 - i), badge.getY() + 3.0f, stripeWidth - 1.0f, badge.getHeight() - 6.0f);
     }
-    g.setColour (Palette::text);
-    g.setFont (juce::FontOptions (17.0f, juce::Font::bold));
-    g.drawText ("VOCODER", area.withTrimmedLeft (44), juce::Justification::centredLeft);
-
-    g.setColour (Palette::panelEdge);
-    g.fillRect (0, getHeight() - 1, getWidth(), 1);
+    g.setColour (Colour (0xff1d1915));
+    g.setFont (Gear::engraved (15.0f).withExtraKerningFactor (0.12f));
+    g.drawText ("VOCODER", badge.withTrimmedLeft (9.0f).withTrimmedRight (stripeWidth * 5.0f + 10.0f), Justification::centredLeft);
 }
 
 void PresetBar::resized()
 {
-    auto area = getLocalBounds().reduced (12, 8);
+    auto area = getLocalBounds().reduced (12, 9);
     for (int i = 2; i >= 0; --i)
-        viewButtons[i].setBounds (area.removeFromRight (i == 2 ? 84 : 66));
+        viewButtons[i].setBounds (area.removeFromRight (i == 2 ? 88 : 68));
+    area.removeFromLeft (136);
+    meter.setBounds (area.removeFromLeft (64).withSizeKeepingCentre (60, 32));
+    area.removeFromRight (8);
 
-    auto centre = area.withSizeKeepingCentre (juce::jmin (380, area.getWidth() - 260), area.getHeight());
+    auto centre = area.withSizeKeepingCentre (juce::jmin (400, area.getWidth()), area.getHeight());
     title.setBounds (centre.removeFromLeft (50));
     centre.removeFromLeft (6);
     prevButton.setBounds (centre.removeFromLeft (30));
@@ -565,12 +568,17 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     addChildComponent (controls);
     addAndMakeVisible (listenBar);
     robotWasOn = p.params.getRawParameterValue (ParamIDs::robotOn)->load() > 0.5f;
+    soundsSeen = p.getSoundChanges();
+    listenBar.onBackToRaw = [this] { chordPad.stopAll(); };
     robotWatch.startTimer (100);
     presetBar.onViewChosen = [this] (int view) { showView (view); };
     showView ((int) p.params.state.getProperty ("view", 0)); // new instances start in Easy
-    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xffe9ecf2));
-    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff1b1f27));
-    keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff9aa3b2));
+    // Old ivory keys.
+    keyboard.setColour (juce::MidiKeyboardComponent::whiteNoteColourId, juce::Colour (0xfff0e4c8));
+    keyboard.setColour (juce::MidiKeyboardComponent::blackNoteColourId, juce::Colour (0xff17130f));
+    keyboard.setColour (juce::MidiKeyboardComponent::keySeparatorLineColourId, juce::Colour (0xff8f7f66));
+    keyboard.setColour (juce::MidiKeyboardComponent::shadowColourId, juce::Colour (0x66000000));
+    keyboard.setColour (juce::MidiKeyboardComponent::textLabelColourId, juce::Colour (0xff5a4e3e));
 
     keyboard.setAvailableRange (36, 96);
     keyboard.setWantsKeyboardFocus (false);
@@ -597,7 +605,7 @@ VocoderEditor::VocoderEditor (VocoderProcessor& p)
     setWantsKeyboardFocus (true);
     setResizable (true, true);
     setResizeLimits (760, 600, 1600, 1400);
-    setSize (900, liveBar != nullptr ? 850 : 770);
+    setSize (900, liveBar != nullptr ? 862 : 782);
 }
 
 VocoderEditor::~VocoderEditor()
@@ -667,22 +675,28 @@ bool VocoderEditor::keyPressed (const juce::KeyPress& key)
 void VocoderEditor::paint (juce::Graphics& g)
 {
     g.fillAll (background);
+    // Walnut cheeks either side, like the end panels on an old synth.
+    Gear::drawWood (g, getLocalBounds().removeFromLeft (cheekWidth).toFloat());
+    Gear::drawWood (g, getLocalBounds().removeFromRight (cheekWidth).toFloat());
 }
 
-// However the robot gets switched on (the bar, a tile, a preset), give it notes so it's heard.
+// However the robot gets switched on or picked (the bar, a tile, a preset at the top),
+// give it notes so it's heard. If you stop the chords, your voice fills in instead.
 void VocoderEditor::checkRobot()
 {
     auto& s = processor.params;
     const bool robot = s.getRawParameterValue (ParamIDs::robotOn)->load() > 0.5f;
     const bool singing = s.getRawParameterValue (ParamIDs::singToPlay)->load() > 0.5f;
-    if (robot && ! robotWasOn && ! singing)
+    const bool picked = processor.getSoundChanges() != soundsSeen;
+    soundsSeen = processor.getSoundChanges();
+    if (robot && (! robotWasOn || picked) && ! singing)
         chordPad.playIfSilent();
     robotWasOn = robot;
 }
 
 void VocoderEditor::resized()
 {
-    auto area = getLocalBounds();
+    auto area = getLocalBounds().reduced (cheekWidth, 0);
     if (liveBar != nullptr)
         liveBar->setBounds (area.removeFromTop (liveBarHeight));
     presetBar.setBounds (area.removeFromTop (presetBarHeight));
@@ -690,7 +704,7 @@ void VocoderEditor::resized()
     keyboard.setBounds (area.removeFromBottom (keyboardHeight));
     keyboard.setKeyWidth ((float) keyboard.getWidth() / numWhiteKeys);
     chordPad.setBounds (area.removeFromBottom (chordPadHeight));
-    listenBar.setBounds (area.removeFromBottom (40));
+    listenBar.setBounds (area.removeFromBottom (48));
     auto tools = area.removeFromBottom (keyboardToolsHeight).reduced (8, 3);
     octaveDown.setBounds (tools.removeFromLeft (52));
     tools.removeFromLeft (4);

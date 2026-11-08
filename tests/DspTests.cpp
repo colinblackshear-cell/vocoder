@@ -5,6 +5,7 @@
 #include "../Source/dsp/CarrierSynth.h"
 #include "../Source/dsp/Effects.h"
 #include "../Source/dsp/Filter.h"
+#include "../Source/dsp/Router.h"
 #include "../Source/dsp/Vintage.h"
 #include "../Source/dsp/Vocoder.h"
 
@@ -621,6 +622,63 @@ void testVintage()
 }
 } // namespace
 
+void testRouter()
+{
+    // Loudness match: a robot at a tenth of your voice's level is brought up to it, within limits.
+    {
+        vox::LoudnessMatch match;
+        match.prepare (sr, 300.0, 0.25f, 6.0f);
+        double phase = 0.0;
+        float gain = 1.0f;
+        for (int i = 0; i < (int) sr * 2; ++i)
+        {
+            const float s = sine (phase, 220.0);
+            gain = match.process (0.3f * s, 0.1f * s);
+        }
+        check (std::abs (gain - 3.0f) < 0.15f, "loudness match brings a quiet signal up to the reference");
+        for (int i = 0; i < (int) sr; ++i)
+            gain = match.process (0.0f, 0.0f);
+        check (std::abs (gain - 3.0f) < 0.15f, "loudness match holds its gain through silence");
+        for (int i = 0; i < (int) sr * 2; ++i)
+            gain = match.process (0.3f, 0.001f);
+        check (std::abs (gain - 6.0f) < 0.01f, "loudness match stays within its limits");
+    }
+
+    // Smart mix: your voice stands in only when nothing else would be heard.
+    {
+        auto standInAfter = [] (vox::SmartMix::Switches s, double seconds)
+        {
+            vox::SmartMix mix;
+            mix.prepare (sr);
+            for (int i = 0; i < (int) (seconds * sr); ++i)
+                mix.process (0.1f, 0.1f, s);
+            return mix.voiceStandIn();
+        };
+        vox::SmartMix::Switches robotPlaying { false, true, true, true };
+        vox::SmartMix::Switches robotNoNotes { false, true, false, true };
+        vox::SmartMix::Switches allOff { false, false, false, true };
+        vox::SmartMix::Switches noFill { false, true, false, false };
+        vox::SmartMix::Switches voiceOn { true, true, false, true };
+        check (standInAfter (robotPlaying, 1.0) < 0.01f, "smart mix: robot playing, voice stays off");
+        check (standInAfter (robotNoNotes, 1.5) > 0.95f, "smart mix: robot with no notes, voice fills in");
+        check (standInAfter (allOff, 0.6) > 0.95f, "smart mix: everything off, back to raw voice");
+        check (standInAfter (noFill, 1.5) < 0.01f, "smart mix: gap filling off keeps the robot's silence");
+        check (standInAfter (voiceOn, 1.5) < 0.01f, "smart mix: voice already on, no stand-in needed");
+
+        // A short gap between chords doesn't let your voice through.
+        vox::SmartMix mix;
+        mix.prepare (sr);
+        for (int i = 0; i < (int) sr; ++i)
+            mix.process (0.1f, 0.1f, robotPlaying);
+        for (int i = 0; i < (int) (0.3 * sr); ++i)
+            mix.process (0.1f, 0.0f, robotNoNotes);
+        const float duringGap = mix.voiceStandIn();
+        for (int i = 0; i < (int) (0.1 * sr); ++i)
+            mix.process (0.1f, 0.1f, robotPlaying);
+        check (duringGap < 0.01f && mix.voiceStandIn() < 0.01f, "smart mix: quick gap between chords stays robot only");
+    }
+}
+
 int main()
 {
     testBandPass();
@@ -634,6 +692,7 @@ int main()
     testAutoTune();
     testChords();
     testVintage();
+    testRouter();
     std::printf ("\n%s\n", failures == 0 ? "All tests passed" : "Some tests failed");
     return failures == 0 ? 0 : 1;
 }

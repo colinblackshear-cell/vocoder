@@ -118,7 +118,8 @@ private:
     void choose (int index);
 
     VocoderProcessor& processor;
-    juce::Label title { {}, "Sound" };
+    juce::Label title { {}, "SOUND" };
+    VuMeter meter;
     juce::ComboBox presetBox;
     juce::TextButton prevButton { "<" }, nextButton { ">" };
 };
@@ -155,6 +156,7 @@ private:
     void checkRobot();
     juce::TimedCallback robotWatch { [this] { checkRobot(); } };
     bool robotWasOn = false;
+    int soundsSeen = 0;
     juce::TextButton octaveDown { "Oct -" }, octaveUp { "Oct +" };
     juce::Label keyHint;
     int keyOctave = 5;

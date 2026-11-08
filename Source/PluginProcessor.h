@@ -5,6 +5,7 @@
 #include "dsp/CarrierSynth.h"
 #include "dsp/Effects.h"
 #include "dsp/Filter.h"
+#include "dsp/Router.h"
 #include "dsp/Vintage.h"
 #include "dsp/Vocoder.h"
 #include "Recorder.h"
@@ -58,6 +59,18 @@ public:
     float getSungPitch() const { return uiSungPitch.load(); }
     int getTargetNote() const { return uiTargetNote.load(); }
 
+    // True while your voice is filling in because nothing else would be heard
+    // (the robot is off or has no notes). The chain bar shows it.
+    bool isVoiceStandingIn() const { return uiVoiceStandIn.load(); }
+
+    // Peak output level of the last block, for the VU meter.
+    float getOutputLevel() const { return uiOutputLevel.load(); }
+
+    // Counts sound changes (a preset, a robot voice picked in Easy mode), so the
+    // editor can give the robot a chord to play if it has none.
+    void soundPicked() { ++soundChanges; }
+    int getSoundChanges() const { return soundChanges.load(); }
+
 private:
     struct Timing
     {
@@ -89,7 +102,15 @@ private:
     std::atomic<float> uiSungPitch { -1.0f };
     std::atomic<int> uiTargetNote { -1 };
 
-    vox::StateVariableFilter filter;
+    vox::SmartMix smartMix;
+    vox::LoudnessMatch driveMatch, filterMatch, vintageMatch, reverbMatch;
+    juce::SmoothedValue<float> bothBlend;
+    std::atomic<bool> uiVoiceStandIn { false };
+    std::atomic<float> uiOutputLevel { 0.0f };
+    std::atomic<int> soundChanges { 0 };
+    bool drone = false, fillGaps = true, voiceOn = true, robotOn = false;
+
+    vox::StateVariableFilter filter, voiceFilter;
     vox::Lfo lfo;
     vox::EnvelopeFollower voiceLevel;
     vox::Distortion distortion;
@@ -101,8 +122,9 @@ private:
     int vintageEra = 3;
     float vintageWear = 0.5f;
 
-    juce::SmoothedValue<float> inputGain, outputGain, robotGain, voiceGain, resonance;
+    juce::SmoothedValue<float> inputGain, outputGain, robotGain, voiceGain, resonance, fxMix;
     bool fxOn = true;
+    float voiceLevelSetting = 0.9f, drive = 0.0f, crush = 0.0f;
     juce::SmoothedValue<float, juce::ValueSmoothingTypes::Multiplicative> cutoff;
     float filterDrive = 0.0f, voiceFollow = 0.0f, lfoDepth = 0.0f, reverbMix = 0.0f;
 

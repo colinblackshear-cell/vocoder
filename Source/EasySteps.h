@@ -34,7 +34,7 @@ inline const std::vector<Step>& all()
     using namespace ParamIDs;
     static const std::vector<Step> steps {
         { "Voice",
-          "Start with your raw voice, or pick a robot. Robots need notes: click a chord at the bottom.",
+          "Start with your raw voice, or pick a robot. A robot plays the chord at the bottom; with no chord, you hear your voice.",
           { robotOn, bands, sharpness, attack, release, formant, sibilance, waveform, octave, detune, noise, carrierAttack,
             carrierRelease, pulseWidth, pwmDepth, osc2Wave, osc2Semitones, osc2Fine, osc2Level, subLevel, glide,
             vibratoRate, vibratoDepth },
@@ -205,6 +205,11 @@ inline void apply (juce::AudioProcessorValueTreeState& state, const Step& step, 
         setDefault (state, id);
     for (const auto& [id, v] : tile.values)
         set (state, id, v);
+
+    // Picking a robot voice means hearing the robot instead of your voice, like the presets.
+    // (Your voice can still be added back in the chain bar, and comes in by itself with no chord.)
+    if (juce::String (step.title) == "Voice" && value (state, ParamIDs::robotOn) > 0.5f)
+        set (state, ParamIDs::voiceOn, 0.0f);
 
     // Auto-tune follows the chord buttons' key and scale, so your voice and chords agree.
     if (juce::String (step.title) == "Auto-Tune" && ! tile.values.empty())

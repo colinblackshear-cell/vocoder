@@ -5,6 +5,7 @@
 #include "../Source/dsp/Chords.h"
 
 #include <cstdio>
+#include <functional>
 #include <memory>
 
 int main()
@@ -26,7 +27,8 @@ int main()
     // The robot on its own (a new instance starts as just your raw voice).
     auto robotOnly = [] (VocoderProcessor& proc)
     {
-        for (auto [id, v] : { std::pair { "robotOn", 1.0f }, { "voiceOn", 0.0f }, { "arpOn", 1.0f } })
+        // With gap filling off, so silence from the robot really is silence.
+        for (auto [id, v] : { std::pair { "robotOn", 1.0f }, { "voiceOn", 0.0f }, { "arpOn", 1.0f }, { "fillGaps", 0.0f } })
         {
             auto* p = proc.params.getParameter (id);
             p->setValueNotifyingHost (p->convertTo0to1 (v));
@@ -158,26 +160,146 @@ int main()
 
     // Hear switches: each part on its own.
     {
-        auto make = [&] (bool robot, bool voice, bool fx, float& peak)
+        auto make = [&] (bool robot, bool voice, bool fx, float& peak, bool fill = true)
         {
             VocoderProcessor proc;
             proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
             proc.prepareToPlay (sampleRate, blockSize);
+            EasySteps::set (proc.params, "fillGaps", fill ? 1.0f : 0.0f);
             EasySteps::set (proc.params, "robotOn", robot ? 1.0f : 0.0f);
             EasySteps::set (proc.params, "voiceOn", voice ? 1.0f : 0.0f);
             EasySteps::set (proc.params, "fxOn", fx ? 1.0f : 0.0f);
             EasySteps::set (proc.params, "reverbMix", 0.5f);
             bool finite = true;
-            run (proc, 10, finite); // let the level switches settle
+            run (proc, 200, finite); // let the level switches settle (your voice waits a moment to fill in)
             peak = run (proc, 300, finite);
             return finite;
         };
-        float voiceOnly = 0, none = 0, noChordRobot = 0;
-        // No chord is playing, so the robot alone is silent and your voice alone is clearly heard.
-        bool ok = make (true, false, false, noChordRobot) && make (false, true, false, voiceOnly) && make (false, false, false, none);
-        check (ok && noChordRobot < 0.01f && voiceOnly > 0.2f && none < 0.01f,
+        float voiceOnly = 0, none = 0, noChordRobot = 0, noFill = 0;
+        // No chord is playing: your voice fills in for the silent robot, and when everything is
+        // switched off you're back to your raw voice. Only with gap filling off is the robot silent.
+        bool ok = make (true, false, false, noChordRobot) && make (false, true, false, voiceOnly) && make (false, false, false, none)
+                  && make (true, false, false, noFill, false);
+        check (ok && noChordRobot > 0.2f && voiceOnly > 0.2f && none > 0.2f && noFill < 0.01f,
                "hear switches: robot alone (no chord) " + juce::String (noChordRobot, 3) + ", your voice alone "
-                   + juce::String (voiceOnly, 3) + ", nothing " + juce::String (none, 4));
+                   + juce::String (voiceOnly, 3) + ", nothing on " + juce::String (none, 3) + ", no gap filling "
+                   + juce::String (noFill, 4));
+    }
+
+    // Colin's switching sequence: raw voice, add an effect, add a rhythm, pick a robot preset at
+    // the top, back to your voice, switch robots... Every step stays clearly audible and none
+    // jumps far louder or quieter than your raw voice.
+    {
+        VocoderProcessor proc;
+        proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
+        proc.prepareToPlay (sampleRate, blockSize);
+        auto val = [&] (const char* id) { return proc.params.getRawParameterValue (id)->load(); };
+        bool chordPlaying = false, robotWas = false;
+        int soundsSeen = proc.getSoundChanges();
+        // What the editor does: a robot switched on or picked gets the key's chord if nothing is playing.
+        auto editorWatch = [&]
+        {
+            const bool robot = val ("robotOn") > 0.5f;
+            const bool picked = proc.getSoundChanges() != soundsSeen;
+            soundsSeen = proc.getSoundChanges();
+            if (robot && (! robotWas || picked) && val ("singToPlay") < 0.5f && ! chordPlaying)
+            {
+                proc.requestChord ({ 48, 52, 55 }, true);
+                chordPlaying = true;
+            }
+            robotWas = robot;
+        };
+        double phase = 0.0, time = 0.0;
+        juce::Random noise (1);
+        auto level = [&] (double seconds)
+        {
+            juce::AudioBuffer<float> b (2, blockSize);
+            double sum = 0.0;
+            long count = 0;
+            const int blocks = (int) (seconds * sampleRate / blockSize);
+            for (int k = 0; k < blocks; ++k)
+            {
+                for (int i = 0; i < blockSize; ++i)
+                {
+                    // A buzzy, syllable-shaped "voice".
+                    phase += 140.0 / sampleRate;
+                    time += 1.0 / sampleRate;
+                    const float saw = (float) (2.0 * (phase - std::floor (phase)) - 1.0);
+                    const float env = (float) (0.5 + 0.5 * std::sin (time * juce::MathConstants<double>::twoPi * 3.0));
+                    const float v = 0.3f * env * saw + 0.01f * (noise.nextFloat() * 2.0f - 1.0f);
+                    b.setSample (0, i, v);
+                    b.setSample (1, i, v);
+                }
+                juce::MidiBuffer m;
+                proc.processBlock (b, m);
+                if (k >= blocks / 2) // after the change has settled
+                    for (int i = 0; i < blockSize; ++i, ++count)
+                        sum += b.getSample (0, i) * b.getSample (0, i);
+            }
+            return std::sqrt (sum / (double) juce::jmax (1L, count));
+        };
+        auto findStep = [] (const char* title)
+        {
+            for (auto& st : EasySteps::all())
+                if (juce::String (st.title) == title)
+                    return &st;
+            return (const EasySteps::Step*) nullptr;
+        };
+        auto tile = [&] (const char* stepTitle, const char* name)
+        {
+            const auto* st = findStep (stepTitle);
+            for (auto& t : st->tiles)
+                if (juce::String (t.name) == name)
+                    EasySteps::apply (proc.params, *st, t);
+            if (juce::String (stepTitle) == "Voice")
+                proc.soundPicked();
+            editorWatch();
+        };
+        auto preset = [&] (const char* name)
+        {
+            for (int i = 0; i < proc.getNumPrograms(); ++i)
+                if (proc.getProgramName (i) == name)
+                    proc.setCurrentProgram (i);
+            editorWatch();
+        };
+        auto flip = [&] (const char* id)
+        {
+            EasySteps::set (proc.params, id, val (id) > 0.5f ? 0.0f : 1.0f);
+            editorWatch();
+        };
+        auto stopChords = [&]
+        {
+            proc.requestChord ({}, true);
+            chordPlaying = false;
+        };
+
+        const double raw = level (1.5);
+        struct Step { const char* what; std::function<void()> action; double low, high; };
+        const std::vector<Step> sequence {
+            { "add Echo", [&] { tile ("Effects", "Echo"); }, 0.6, 1.6 },
+            { "add Climb arp", [&] { tile ("Rhythm", "Climb"); }, 0.6, 2.0 },
+            { "Monster preset at the top", [&] { preset ("Monster"); }, 0.5, 1.6 },
+            { "back to Raw voice tile", [&] { tile ("Voice", "Raw"); }, 0.5, 1.6 },
+            { "Monster voice tile", [&] { tile ("Voice", "Monster"); }, 0.5, 2.0 },
+            { "Raw voice tile again", [&] { tile ("Voice", "Raw"); }, 0.5, 1.6 },
+            { "Trance gate", [&] { tile ("Rhythm", "Trance"); }, 0.3, 1.6 },
+            { "chain bar: robot on", [&] { flip ("robotOn"); }, 0.3, 2.0 },
+            { "chain bar: your voice off", [&] { flip ("voiceOn"); }, 0.3, 1.6 },
+            { "chain bar: robot off too", [&] { flip ("robotOn"); }, 0.3, 1.6 },
+            { "Raw Voice preset", [&] { preset ("Raw Voice"); }, 0.8, 1.25 },
+            { "Classic Robot preset", [&] { preset ("Classic Robot"); }, 0.5, 1.6 },
+            { "Stop all chords", [&] { stopChords(); }, 0.5, 1.6 },
+            { "Monster preset with nothing playing", [&] { preset ("Monster"); }, 0.5, 1.6 },
+            { "Choir preset", [&] { preset ("Choir Pad"); }, 0.4, 1.6 },
+        };
+        for (const auto& step : sequence)
+        {
+            step.action();
+            const double ratio = level (1.5) / raw;
+            check (ratio > step.low && ratio < step.high,
+                   juce::String ("switching: ") + step.what + " at " + juce::String (juce::Decibels::gainToDecibels (ratio), 1)
+                       + " dB from your raw voice");
+        }
     }
 
     // A new instance is just your raw voice, and the rhythm gate chops it with no robot.

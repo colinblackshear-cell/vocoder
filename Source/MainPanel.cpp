@@ -9,8 +9,9 @@ constexpr int switchHeight = 28;
 
 void styleCaption (juce::Label& label, const juce::String& text)
 {
-    label.setText (text, juce::dontSendNotification);
-    label.setFont (juce::FontOptions (12.0f));
+    // Engraved, in capitals, like the lettering on old gear.
+    label.setText (text.toUpperCase(), juce::dontSendNotification);
+    label.setFont (Gear::engraved (10.5f));
     label.setColour (juce::Label::textColourId, Palette::dim);
     label.setInterceptsMouseClicks (false, false);
 }
@@ -162,17 +163,8 @@ void Section::addKnob (std::unique_ptr<juce::Component> c)
 
 void Section::paint (juce::Graphics& g)
 {
-    auto bounds = getLocalBounds().toFloat().reduced (3.0f);
-    g.setColour (Palette::panel);
-    g.fillRoundedRectangle (bounds, 10.0f);
-    g.setColour (Palette::panelEdge);
-    g.drawRoundedRectangle (bounds, 10.0f, 1.0f);
-
-    // A short accent bar and the title.
-    g.setColour (accent);
-    g.fillRoundedRectangle (bounds.getX() + 12.0f, bounds.getY() + 11.0f, 14.0f, 4.0f, 2.0f);
-    g.setFont (juce::FontOptions (12.5f, juce::Font::bold));
-    g.drawText (title, bounds.withTrimmedLeft (32.0f).withHeight (26.0f), juce::Justification::centredLeft);
+    // Each section is its own piece of gear.
+    Gear::drawFaceplate (g, getLocalBounds().toFloat().reduced (3.0f), accent, title);
 }
 
 void Section::resized()
@@ -296,16 +288,27 @@ void MainPanel::resized()
 
 //==============================================================================
 ListenBar::ListenBar (VocoderProcessor& p)
-    : robotAttachment (p.params, ParamIDs::robotLevel, robotLevel),
+    : processor (p),
+      robotAttachment (p.params, ParamIDs::robotLevel, robotLevel),
       voiceAttachment (p.params, ParamIDs::voiceLevel, voiceLevel)
 {
-    title.setFont (juce::FontOptions (13.0f, juce::Font::bold));
-    title.setColour (juce::Label::textColourId, Palette::dim);
-    addAndMakeVisible (title);
+    // One click back to where you started: just your raw voice.
+    rawButton.setTooltip ("Back to just your raw voice: switches every module off and stops the chords");
+    rawButton.setWantsKeyboardFocus (false);
+    rawButton.setColour (juce::TextButton::buttonColourId, Palette::tune.darker (0.9f));
+    rawButton.onClick = [this]
+    {
+        processor.setCurrentProgram (0);
+        if (onBackToRaw)
+            onBackToRaw();
+    };
+    addAndMakeVisible (rawButton);
 
     struct Info { const char* id; const char* name; const char* tip; juce::Colour colour; };
     const Info info[numParts] = {
-        { ParamIDs::voiceOn, "Your voice", "Your own voice, straight from the mic (auto-tuned when Auto-Tune is on)", Palette::tune },
+        { ParamIDs::voiceOn, "Your voice",
+          "Your own voice, straight from the mic (auto-tuned when Auto-Tune is on). When nothing else would be heard, it comes in on its own and its lamp pulses",
+          Palette::tune },
         { ParamIDs::tuneOn, "Auto-Tune", "Snaps your voice to the notes of the key", Palette::tune.interpolatedWith (Palette::synth, 0.5f) },
         { ParamIDs::robotOn, "Robot", "The vocoder: your words played by the synth, on the notes of your chord", Palette::voice },
         { ParamIDs::arpOn, "Rhythm", "The rhythm gate chops your sound into a beat; the note arp plays the robot's chord", Palette::arp },
@@ -319,8 +322,7 @@ ListenBar::ListenBar (VocoderProcessor& p)
         b.setTooltip (info[i].tip);
         b.setClickingTogglesState (true);
         b.setWantsKeyboardFocus (false);
-        b.setColour (juce::TextButton::buttonOnColourId, info[i].colour.withAlpha (0.85f));
-        b.setColour (juce::TextButton::textColourOnId, Palette::background);
+        b.accent = info[i].colour;
         parts[i].attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (p.params, info[i].id, b);
         addAndMakeVisible (b);
     }
@@ -375,16 +377,117 @@ ListenBar::ListenBar (VocoderProcessor& p)
     parts[2].button.onStateChange = [this] { robotLevel.setAlpha (parts[2].button.getToggleState() ? 1.0f : 0.35f); };
     parts[0].button.onStateChange();
     parts[2].button.onStateChange();
+    startTimerHz (15);
+}
+
+void ListenBar::timerCallback()
+{
+    auto& voice = parts[0].button;
+    const bool standingIn = processor.isVoiceStandingIn() && ! voice.getToggleState();
+    if (standingIn || voice.standingIn)
+    {
+        voice.standingIn = standingIn;
+        voice.pulse = 0.5f + 0.5f * std::sin ((float) juce::Time::getMillisecondCounter() * 0.004f);
+        voice.repaint();
+    }
+    voiceLevel.setAlpha (voice.getToggleState() || standingIn ? 1.0f : 0.35f);
+}
+
+//==============================================================================
+void ModuleButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
+{
+    using namespace juce;
+    auto r = getLocalBounds().toFloat().reduced (1.0f, 2.0f);
+    const bool on = getToggleState();
+    Gear::drawKey (g, r, on ? Palette::control.interpolatedWith (accent, 0.18f) : Palette::control.darker (0.2f), on, highlighted,
+                   down, 3.0f);
+    if (down)
+        r = r.translated (0.0f, 1.0f);
+
+    const float glow = on ? 1.0f : standingIn ? 0.35f + 0.45f * pulse : 0.0f;
+    Gear::drawLamp (g, { r.getX() + 11.0f, r.getCentreY() }, 4.0f, accent, glow);
+    g.setColour (on || standingIn ? Palette::text : Palette::dim);
+    g.setFont (Gear::engraved (jmin (13.5f, r.getHeight() * 0.4f)));
+    g.drawFittedText (standingIn ? getButtonText() + " (auto)" : getButtonText(), r.withTrimmedLeft (20.0f).toNearestInt(),
+                      Justification::centred, 1, 0.8f);
+}
+
+//==============================================================================
+VuMeter::VuMeter (VocoderProcessor& p) : processor (p)
+{
+    setTooltip ("Output level");
+    startTimerHz (30);
+}
+
+void VuMeter::timerCallback()
+{
+    // Rough VU ballistics: about 300 ms to rise and fall.
+    const float db = juce::Decibels::gainToDecibels (processor.getOutputLevel(), -40.0f);
+    const float target = juce::jlimit (0.0f, 1.0f, (db + 30.0f) / 33.0f); // -30 dB to +3 dB
+    const float moved = needle + 0.2f * (target - needle);
+    if (std::abs (moved - needle) > 0.001f)
+    {
+        needle = moved;
+        repaint();
+    }
+}
+
+void VuMeter::paint (juce::Graphics& g)
+{
+    using namespace juce;
+    auto r = getLocalBounds().toFloat().reduced (1.0f);
+    g.setColour (Colours::black);
+    g.fillRoundedRectangle (r, 3.0f);
+    auto face = r.reduced (2.0f);
+    g.setGradientFill (ColourGradient (Colour (0xfff6e6b8), face.getCentreX(), face.getBottom(), Colour (0xffd9c08a), face.getCentreX(),
+                                       face.getY(), true));
+    g.fillRoundedRectangle (face, 2.0f);
+
+    const auto pivot = Point<float> (face.getCentreX(), face.getBottom() + face.getHeight() * 0.35f);
+    const float radius = face.getHeight() * 1.05f;
+    const float start = -0.75f, end = 0.75f, red = start + (end - start) * (30.0f / 33.0f);
+    Path scale, redZone;
+    scale.addCentredArc (pivot.x, pivot.y, radius * 0.82f, radius * 0.82f, 0.0f, start, red, true);
+    redZone.addCentredArc (pivot.x, pivot.y, radius * 0.82f, radius * 0.82f, 0.0f, red, end, true);
+    g.setColour (Colour (0xff2a2520));
+    g.strokePath (scale, PathStrokeType (1.0f));
+    g.setColour (Colour (0xffc8322a));
+    g.strokePath (redZone, PathStrokeType (2.5f));
+    for (int i = 0; i <= 6; ++i)
+    {
+        const float a = start + (end - start) * (float) i / 6.0f;
+        g.setColour (a > red ? Colour (0xffc8322a) : Colour (0xff2a2520));
+        g.drawLine (Line<float> (pivot.getPointOnCircumference (radius * 0.82f, a), pivot.getPointOnCircumference (radius * 0.92f, a)), 1.0f);
+    }
+    g.setColour (Colour (0xff2a2520));
+    g.setFont (Gear::engraved (8.0f));
+    g.drawText ("VU", face.withTrimmedTop (face.getHeight() * 0.45f), Justification::centred);
+
+    g.saveState();
+    g.reduceClipRegion (face.toNearestInt());
+    const float a = start + (end - start) * needle;
+    g.setColour (Colour (0xff1a1612));
+    g.drawLine (Line<float> (pivot.getPointOnCircumference (radius * 0.3f, a), pivot.getPointOnCircumference (radius * 0.97f, a)), 1.2f);
+    g.restoreState();
+
+    g.setGradientFill (ColourGradient (Colours::white.withAlpha (0.25f), face.getX(), face.getY(), Colours::transparentWhite, face.getX(),
+                                       face.getCentreY(), false));
+    g.fillRoundedRectangle (face.withHeight (face.getHeight() * 0.5f), 2.0f);
 }
 
 void ListenBar::paint (juce::Graphics& g)
 {
-    g.fillAll (Palette::panel);
-    g.setColour (Palette::panelEdge);
-    g.fillRect (0, 0, getWidth(), 1);
+    using namespace juce;
+    // A rack rail the modules sit in.
+    auto r = getLocalBounds().toFloat();
+    g.setGradientFill (ColourGradient (Colour (0xff2e2a25), 0.0f, r.getY(), Colour (0xff141210), 0.0f, r.getBottom(), false));
+    g.fillRect (r);
+    g.setColour (Colours::white.withAlpha (0.06f));
+    g.drawHorizontalLine (0, 0.0f, r.getRight());
+    g.setColour (Colours::black.withAlpha (0.8f));
+    g.drawHorizontalLine (getHeight() - 1, 0.0f, r.getRight());
 
-    // Arrows between the modules, showing the order the sound flows through them.
-    g.setColour (Palette::dim);
+    // Patch cables between the modules, in the order the sound flows through them.
     for (int i = 0; i + 1 < numParts; ++i)
     {
         auto from = parts[i].button.getBounds();
@@ -392,22 +495,26 @@ void ListenBar::paint (juce::Graphics& g)
             from = from.getUnion (voiceLevel.getBounds());
         if (i == 2)
             from = from.getUnion (robotLevel.getBounds());
-        const float x0 = (float) from.getRight() + 3.0f, x1 = (float) parts[i + 1].button.getX() - 3.0f;
-        const float y = (float) from.getCentreY();
-        juce::Path arrow;
-        arrow.startNewSubPath (x0, y);
-        arrow.lineTo (x1, y);
-        g.strokePath (arrow, juce::PathStrokeType (1.5f));
-        juce::Path head;
-        head.addTriangle (x1, y, x1 - 5.0f, y - 3.5f, x1 - 5.0f, y + 3.5f);
-        g.fillPath (head);
+        const float x0 = (float) from.getRight() + 1.0f, x1 = (float) parts[i + 1].button.getX() - 1.0f;
+        const float y = (float) from.getCentreY() + 2.0f;
+        Path cable;
+        cable.startNewSubPath (x0, y);
+        cable.cubicTo (x0 + 6.0f, y + 9.0f, x1 - 6.0f, y + 9.0f, x1, y);
+        g.setColour (Colour (0xff0a0908));
+        g.strokePath (cable, PathStrokeType (4.0f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour (Palette::record.darker (0.6f));
+        g.strokePath (cable, PathStrokeType (2.2f, PathStrokeType::curved, PathStrokeType::rounded));
+        g.setColour (Palette::metal);
+        g.fillRoundedRectangle (x0 - 1.0f, y - 2.5f, 4.0f, 5.0f, 1.0f);
+        g.fillRoundedRectangle (x1 - 3.0f, y - 2.5f, 4.0f, 5.0f, 1.0f);
     }
 }
 
 void ListenBar::resized()
 {
-    auto area = getLocalBounds().reduced (10, 6);
-    title.setBounds (area.removeFromLeft (80));
+    auto area = getLocalBounds().reduced (10, 5);
+    rawButton.setBounds (area.removeFromLeft (92));
+    area.removeFromLeft (12);
 
     const int gap = 22;
     const int sliderWidth = juce::jlimit (50, 100, (area.getWidth() - numParts * 88 - (numParts - 1) * gap) / 2);
