@@ -92,6 +92,7 @@ inline constexpr auto arpOn = "arpOn";
 inline constexpr auto robotLevel = "robotLevel";
 inline constexpr auto voiceLevel = "voiceLevel";
 inline constexpr auto outputGain = "outputGain";
+inline constexpr auto fillGaps = "fillGaps";
 } // namespace ParamIDs
 
 // Musical note lengths, in beats, shared by the arp rate, LFO sync and delay time.
@@ -261,7 +262,9 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         toggle (ParamIDs::fxOn, "Effects On", true),
         real (ParamIDs::robotLevel, "Robot Level", { 0.0f, 1.0f, 0.01f }, 1.0f, ""),
         real (ParamIDs::voiceLevel, "Voice Level", { 0.0f, 1.0f, 0.01f }, 0.9f, ""),
-        real (ParamIDs::outputGain, "Output Gain", { -24.0f, 12.0f, 0.1f }, 0.0f, "dB")));
+        real (ParamIDs::outputGain, "Output Gain", { -24.0f, 12.0f, 0.1f }, 0.0f, "dB"),
+        // When the robot is on but has no notes to play, your voice fills in instead of silence.
+        toggle (ParamIDs::fillGaps, "Voice Fills Gaps", true)));
 
     return layout;
 }

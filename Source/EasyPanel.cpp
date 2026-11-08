@@ -17,35 +17,23 @@ Tile::Tile (const juce::String& name, const juce::String& d, juce::Colour a)
 void Tile::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
     using namespace juce;
-    auto bounds = getLocalBounds().toFloat().reduced (4.0f);
+    // A big selector key with a pilot lamp, like the voice buttons on an old organ.
+    auto bounds = getLocalBounds().toFloat().reduced (5.0f, 4.0f).withTrimmedBottom (2.0f);
     const bool on = getToggleState();
-
-    g.setColour (on ? accent.withAlpha (0.22f) : Palette::control.brighter (highlighted ? 0.12f : 0.0f));
-    g.fillRoundedRectangle (bounds, 12.0f);
-    g.setColour (on ? accent : Palette::panelEdge.brighter (highlighted ? 0.3f : 0.0f));
-    g.drawRoundedRectangle (bounds, 12.0f, on ? 2.5f : 1.0f);
+    Gear::drawKey (g, bounds, on ? Palette::control.interpolatedWith (accent, 0.28f) : Palette::control, on, highlighted, down, 6.0f);
     if (down)
-    {
-        g.setColour (Colours::white.withAlpha (0.06f));
-        g.fillRoundedRectangle (bounds, 12.0f);
-    }
+        bounds = bounds.translated (0.0f, 1.0f);
 
-    // A dot that fills in when the tile is on.
-    auto content = bounds.reduced (14.0f, 10.0f);
-    auto dot = Rectangle<float> (14.0f, 14.0f).withPosition (content.getX(), content.getY() + 3.0f);
-    g.setColour (accent);
-    if (on)
-        g.fillEllipse (dot);
-    else
-        g.drawEllipse (dot.reduced (1.0f), 2.0f);
+    auto content = bounds.reduced (14.0f, 9.0f);
+    Gear::drawLamp (g, { content.getX() + 7.0f, content.getY() + 11.0f }, 6.0f, accent, on ? 1.0f : 0.0f);
 
     g.setColour (Palette::text);
-    g.setFont (FontOptions (jmin (19.0f, bounds.getHeight() * 0.3f), Font::bold));
-    g.drawText (getButtonText(), content.withTrimmedLeft (22.0f).removeFromTop (22.0f), Justification::centredLeft);
+    g.setFont (Gear::engraved (jmin (18.0f, bounds.getHeight() * 0.28f)));
+    g.drawText (getButtonText().toUpperCase(), content.withTrimmedLeft (24.0f).removeFromTop (22.0f), Justification::centredLeft);
 
-    g.setColour (Palette::dim);
+    g.setColour (on ? Palette::text.withAlpha (0.85f) : Palette::dim);
     g.setFont (FontOptions (13.0f));
-    g.drawFittedText (description, content.withTrimmedTop (26.0f).toNearestInt(), Justification::topLeft, 2);
+    g.drawFittedText (description, content.withTrimmedTop (27.0f).toNearestInt(), Justification::topLeft, 2);
 }
 
 //==============================================================================
@@ -115,6 +103,8 @@ void EasyPanel::buildStep()
                 EasySteps::apply (processor.params, st, st.tiles.front());
             else
                 EasySteps::apply (processor.params, st, st.tiles[t]);
+            if (juce::String (st.title) == "Voice")
+                processor.soundPicked();
             timerCallback();
         };
         addAndMakeVisible (tile);
@@ -188,11 +178,12 @@ void EasyPanel::timerCallback()
 void EasyPanel::paint (juce::Graphics& g)
 {
     g.fillAll (Palette::background);
+    Gear::drawFaceplate (g, getLocalBounds().toFloat().reduced (4.0f, 3.0f), stepColours[step]);
 }
 
 void EasyPanel::resized()
 {
-    auto area = getLocalBounds().reduced (12, 8);
+    auto area = getLocalBounds().reduced (20, 14);
 
     // Step buttons across the top.
     auto steps = area.removeFromTop (36);

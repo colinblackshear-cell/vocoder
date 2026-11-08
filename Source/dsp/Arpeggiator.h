@@ -161,6 +161,7 @@ public:
     }
 
     int getPlayingNote() const { return playingNote; }
+    bool hasNotes() const { return heldCount > 0; }
 
 private:
     int nextNote()

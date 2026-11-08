@@ -48,6 +48,9 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     gate.prepare (sampleRate);
     autoTune.prepare (sampleRate);
     filter.prepare (sampleRate);
+    voiceFilter.prepare (sampleRate);
+    smartMix.prepare (sampleRate);
+    driveMatch.prepare (sampleRate, 120.0, 0.5f, 8.0f);
     voiceLevel.setTimes (sampleRate, 5.0, 150.0);
     voiceLevel.reset();
     chorus.prepare (sampleRate);
@@ -62,6 +65,7 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     outputGain.reset (sampleRate, 0.02);
     robotGain.reset (sampleRate, 0.02);
     voiceGain.reset (sampleRate, 0.02);
+    fxMix.reset (sampleRate, 0.03);
     resonance.reset (sampleRate, 0.02);
     cutoff.reset (sampleRate, 0.02);
 
@@ -70,6 +74,7 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     outputGain.setCurrentAndTargetValue (outputGain.getTargetValue());
     robotGain.setCurrentAndTargetValue (robotGain.getTargetValue());
     voiceGain.setCurrentAndTargetValue (voiceGain.getTargetValue());
+    fxMix.setCurrentAndTargetValue (fxMix.getTargetValue());
     resonance.setCurrentAndTargetValue (resonance.getTargetValue());
     cutoff.setCurrentAndTargetValue (cutoff.getTargetValue());
     vintageMix.setCurrentAndTargetValue (vintageMix.getTargetValue());
@@ -117,7 +122,7 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     cs.noise = raw (params, ParamIDs::noise);
     cs.attackMs = raw (params, ParamIDs::carrierAttack);
     cs.releaseMs = raw (params, ParamIDs::carrierRelease);
-    cs.drone = raw (params, ParamIDs::drone) > 0.5f;
+    cs.drone = drone = raw (params, ParamIDs::drone) > 0.5f;
     cs.droneNote = index (params, ParamIDs::droneNote);
     cs.pulseWidth = raw (params, ParamIDs::pulseWidth);
     cs.pwmDepth = raw (params, ParamIDs::pwmDepth);
@@ -149,6 +154,7 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     arp.syncTo (timing.ppq / stepBeats);
 
     filter.setMode ((vox::FilterMode) index (params, ParamIDs::filterMode));
+    voiceFilter.setMode ((vox::FilterMode) index (params, ParamIDs::filterMode));
     cutoff.setTargetValue (raw (params, ParamIDs::cutoff));
     resonance.setTargetValue (raw (params, ParamIDs::resonance));
     filterDrive = raw (params, ParamIDs::filterDrive);
@@ -167,7 +173,9 @@ void VocoderProcessor::updateSettings (const Timing& timing)
         lfo.setIncrement (raw (params, ParamIDs::lfoRate) / sampleRate);
     }
 
-    distortion.set (raw (params, ParamIDs::drive), raw (params, ParamIDs::crush));
+    drive = raw (params, ParamIDs::drive);
+    crush = raw (params, ParamIDs::crush);
+    distortion.set (drive, crush);
     chorus.set (raw (params, ParamIDs::chorusRate), raw (params, ParamIDs::chorusDepth), raw (params, ParamIDs::chorusMix));
 
     const double delayBeats = NoteLengths::delayBeats[juce::jlimit (0, 5, index (params, ParamIDs::delayTime))];
@@ -178,8 +186,10 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     juce::Reverb::Parameters rp;
     rp.roomSize = raw (params, ParamIDs::reverbSize);
     rp.damping = raw (params, ParamIDs::reverbDamping);
-    rp.wetLevel = reverbMix * 0.6f;
-    rp.dryLevel = 1.0f - reverbMix * 0.5f;
+    // juce::Reverb doubles the dry level and triples the wet internally, so these are
+    // scaled down to keep the overall level steady as the reverb comes in.
+    rp.wetLevel = reverbMix * 0.3f;
+    rp.dryLevel = (1.0f - reverbMix * 0.5f) * 0.5f;
     rp.width = 1.0f;
     reverb.setParameters (rp);
 
@@ -202,9 +212,14 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     inputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (params, ParamIDs::inputGain)));
     outputGain.setTargetValue (juce::Decibels::decibelsToGain (raw (params, ParamIDs::outputGain)));
     // What you hear: the robot (vocoder), your own (auto-tuned) voice, or both.
-    robotGain.setTargetValue (raw (params, ParamIDs::robotOn) > 0.5f ? raw (params, ParamIDs::robotLevel) : 0.0f);
-    voiceGain.setTargetValue (raw (params, ParamIDs::voiceOn) > 0.5f ? raw (params, ParamIDs::voiceLevel) : 0.0f);
+    robotOn = raw (params, ParamIDs::robotOn) > 0.5f;
+    voiceOn = raw (params, ParamIDs::voiceOn) > 0.5f;
+    fillGaps = raw (params, ParamIDs::fillGaps) > 0.5f;
+    voiceLevelSetting = raw (params, ParamIDs::voiceLevel);
+    robotGain.setTargetValue (robotOn ? raw (params, ParamIDs::robotLevel) : 0.0f);
+    voiceGain.setTargetValue (voiceOn ? voiceLevelSetting : 0.0f);
     fxOn = raw (params, ParamIDs::fxOn) > 0.5f;
+    fxMix.setTargetValue (fxOn ? 1.0f : 0.0f);
     vintageMix.setTargetValue (raw (params, ParamIDs::vintageOn) > 0.5f ? raw (params, ParamIDs::vintageAmount) : 0.0f);
     vintageEra = index (params, ParamIDs::vintageEra);
     vintageWear = raw (params, ParamIDs::vintageWear);
@@ -433,32 +448,60 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             updateSungNotes (singMode);
         }
 
-        // Vocoder, then the rhythm gate, then the filter.
+        // The chain, always in this order: your voice -> auto-tune (above) -> robot ->
+        // rhythm -> effects -> vintage. Each part only changes the sound when it's switched on.
         const float arpGain = arp.process (synth);
-        float wet = vocoder.process (voice, synth.process()) * arpGain;
+        float wet = vocoder.process (voice, synth.process());
 
+        // The robot is kept about as loud as your voice, whichever robot it is; and when
+        // nothing else would be heard, your voice stands in (see SmartMix).
+        vox::SmartMix::Switches switches;
+        switches.voiceOn = voiceOn;
+        switches.robotOn = robotOn;
+        switches.robotHasNotes = arp.hasNotes() || drone || singMode != 0;
+        switches.fillGaps = fillGaps;
+        wet *= smartMix.process (voice, wet, switches) * arpGain;
+
+        // The robot's own filter (Studio: Filter). With Effects on, it filters your voice too,
+        // so Wobble and Wah work on your raw voice as well as the robot.
         const float follow = std::min (1.0f, voiceLevel.process (voice) * 4.0f);
         const float octaves = lfo.process() * lfoDepth + follow * voiceFollow;
-        filter.setCutoff (cutoff.getNextValue() * std::exp2 (octaves), resonance.getNextValue());
+        const float cutoffHz = cutoff.getNextValue() * std::exp2 (octaves), q = resonance.getNextValue();
+        filter.setCutoff (cutoffHz, q);
         if (filterDrive > 0.0f)
             wet = std::tanh (wet * (1.0f + filterDrive * 6.0f)) / (1.0f + filterDrive * 2.0f);
         wet = filter.process (wet);
 
-        // The robot and your own voice meet here, and share the effects.
-        // The rhythm gate chops your own voice too, so it works without the robot.
-        float sound = wet * robotGain.getNextValue() + voice * voiceGain.getNextValue() * arpGain;
-        if (fxOn)
-            sound = distortion.process (sound);
+        // Your voice: switched on, or standing in. The rhythm gate chops it too, so it works without the robot.
+        const float standIn = smartMix.voiceStandIn() * voiceLevelSetting;
+        float dryVoice = voice * std::max (voiceGain.getNextValue(), standIn) * arpGain;
+        const float effects = fxMix.getNextValue();
+        voiceFilter.setCutoff (cutoffHz, q);
+        const float filteredVoice = voiceFilter.process (dryVoice);
+        if (effects > 0.0f)
+            dryVoice += effects * (filteredVoice - dryVoice);
 
-        // Stereo from here on.
-        float left = sound, right = sound;
-        if (fxOn)
+        // The robot and your own voice meet here, and share the effects.
+        const float sound = wet * robotGain.getNextValue() + dryVoice;
+
+        // Effects run all the time and are faded in and out, so switching them never clicks
+        // and echoes ring out naturally. Drive adds grit, not volume.
+        // (A first guess at the drive's gain is taken out at once; the match does the rest.)
+        float driven = distortion.process (sound);
+        if (drive > 0.0f)
         {
-            chorus.process (left, right);
-            delay.process (left, right);
-            if (reverbMix > 0.0f)
-                reverb.processStereo (&left, &right, 1);
+            const float amount = 1.0f + drive * 20.0f;
+            driven *= std::tanh (amount) / (amount * (1.0f - 0.4f * drive));
         }
+        driven *= driveMatch.process (sound, driven);
+        float left = driven, right = driven;
+        chorus.process (left, right);
+        delay.process (left, right);
+        if (reverbMix > 0.0f)
+            reverb.processStereo (&left, &right, 1);
+
+        left = sound + effects * (left - sound);
+        right = sound + effects * (right - sound);
 
         // Last, the whole sound goes onto an old record (reverb and all, like a real old room).
         if (vintageMix.isSmoothing() || vintageMix.getTargetValue() > 0.0f)
@@ -495,6 +538,8 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
     addMetronome (out, timing, beatsPerSample);
 
+    uiVoiceStandIn = smartMix.isStandingIn();
+    uiOutputLevel = out.getMagnitude (0, numSamples);
     uiSungPitch = tuning && autoTune.isVoiced() ? autoTune.getDetectedMidi() : -1.0f;
     uiTargetNote = tuning && autoTune.isVoiced() ? autoTune.getSungNote() : -1;
 
@@ -525,6 +570,7 @@ void VocoderProcessor::setCurrentProgram (int index)
         return;
     Presets::apply (params, Presets::all()[(size_t) index]);
     params.state.setProperty ("program", index, nullptr); // saved with the song
+    soundPicked();
 }
 
 const juce::String VocoderProcessor::getProgramName (int index)

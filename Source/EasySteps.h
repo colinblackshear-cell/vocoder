@@ -34,7 +34,7 @@ inline const std::vector<Step>& all()
     using namespace ParamIDs;
     static const std::vector<Step> steps {
         { "Voice",
-          "Start with your raw voice, or pick a robot. Robots need notes: click a chord at the bottom.",
+          "Start with your raw voice, or pick a robot. A robot plays the chord at the bottom; with no chord, you hear your voice.",
           { robotOn, bands, sharpness, attack, release, formant, sibilance, waveform, octave, detune, noise, carrierAttack,
             carrierRelease, pulseWidth, pwmDepth, osc2Wave, osc2Semitones, osc2Fine, osc2Level, subLevel, glide,
             vibratoRate, vibratoDepth },

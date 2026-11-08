@@ -181,7 +181,7 @@ inline bool keepsValue (const juce::String& id)
 {
     using namespace ParamIDs;
     for (auto* kept : { inputGain, gateThreshold, tempo, metronome, chordTiming, drone, droneNote, outputGain, tuneKey, tuneScale,
-                              chordKey, chordScale, chordFlavour })
+                              chordKey, chordScale, chordFlavour, fillGaps })
         if (id == kept)
             return true;
     return false;

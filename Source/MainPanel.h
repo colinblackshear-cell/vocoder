@@ -90,26 +90,58 @@ private:
         vintage { "VINTAGE", Palette::vintage }, mix { "OUTPUT", Palette::mix };
 };
 
+// One module in the chain bar, drawn as a small unit with a pilot lamp.
+// The lamp half-glows and pulses while the module is filling in on its own
+// (your voice, when nothing else would be heard).
+class ModuleButton : public juce::Button
+{
+public:
+    ModuleButton() : juce::Button ({}) {}
+    void paintButton (juce::Graphics&, bool highlighted, bool down) override;
+
+    juce::Colour accent = Palette::voice;
+    bool standingIn = false;
+    float pulse = 0.0f;
+};
+
+// An old-style VU meter showing the output level.
+class VuMeter : public juce::Component, public juce::SettableTooltipClient, private juce::Timer
+{
+public:
+    explicit VuMeter (VocoderProcessor& processor);
+    void paint (juce::Graphics&) override;
+
+private:
+    void timerCallback() override;
+    VocoderProcessor& processor;
+    float needle = 0.0f; // 0..1 across the scale
+};
+
 // Your sound as a chain of modules: Your voice, Auto-Tune, Robot, Rhythm,
 // Effects, Vintage. Each switches on and off on its own, so you can start from your
 // raw voice and add only what you want. Shown in every view.
-class ListenBar : public juce::Component
+class ListenBar : public juce::Component, private juce::Timer
 {
 public:
     explicit ListenBar (VocoderProcessor& processor);
     void resized() override;
     void paint (juce::Graphics&) override;
 
+    // Called after "Raw voice" has reset the sound, so the editor can stop the chords.
+    std::function<void()> onBackToRaw;
+
 private:
     static constexpr int numParts = 6;
+    void timerCallback() override;
 
     struct Part
     {
-        juce::TextButton button;
+        ModuleButton button;
         std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
     };
 
-    juce::Label title { {}, "Your sound" };
+    VocoderProcessor& processor;
+    juce::TextButton rawButton { "Raw voice" };
     Part parts[numParts];
     juce::Slider robotLevel, voiceLevel;
     juce::AudioProcessorValueTreeState::SliderAttachment robotAttachment, voiceAttachment;
