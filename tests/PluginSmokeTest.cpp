@@ -186,6 +186,45 @@ int main()
                    + juce::String (noFill, 4));
     }
 
+    // Robot alone, no notes, gap filling off: silent, even for a breathy voice full of "s" sounds
+    // (the vocoder's S and T used to let them through on their own, a whisper of your voice).
+    {
+        VocoderProcessor proc;
+        proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
+        proc.prepareToPlay (sampleRate, blockSize);
+        EasySteps::set (proc.params, "fillGaps", 0.0f);
+        EasySteps::set (proc.params, "robotOn", 1.0f);
+        EasySteps::set (proc.params, "voiceOn", 0.0f);
+        EasySteps::set (proc.params, "sibilance", 1.0f);
+        juce::Random noise (7);
+        auto hiss = [&] (int blocks, bool withNotes)
+        {
+            float peak = 0.0f;
+            for (int block = 0; block < blocks; ++block)
+            {
+                juce::AudioBuffer<float> buffer (2, blockSize);
+                for (int i = 0; i < blockSize; ++i)
+                {
+                    const float v = 0.3f * (noise.nextFloat() * 2.0f - 1.0f);
+                    buffer.setSample (0, i, v);
+                    buffer.setSample (1, i, v);
+                }
+                juce::MidiBuffer midi;
+                if (withNotes && block == 0)
+                    midi.addEvent (juce::MidiMessage::noteOn (1, 60, 0.8f), 0);
+                proc.processBlock (buffer, midi);
+                peak = std::max (peak, buffer.getMagnitude (0, blockSize));
+            }
+            return peak;
+        };
+        hiss (200, false);
+        const float whisper = hiss (200, false);
+        const float singing = hiss (200, true);
+        check (whisper < 0.01f && singing > 0.05f,
+               "robot alone, no notes, no gap filling: no whisper of your voice (" + juce::String (whisper, 4) + "), with a note "
+                   + juce::String (singing, 3));
+    }
+
     // Colin's switching sequence: raw voice, add an effect, add a rhythm, pick a robot preset at
     // the top, back to your voice, switch robots... Every step stays clearly audible and none
     // jumps far louder or quieter than your raw voice.
