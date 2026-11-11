@@ -466,6 +466,7 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         // The chain, always in this order: your voice -> auto-tune (above) -> robot ->
         // rhythm -> effects -> vintage. Each part only changes the sound when it's switched on.
         const float arpGain = arp.process (synth);
+        vocoder.setSibilanceOpen (arp.hasNotes() || drone || singMode != 0);
         float wet = vocoder.process (voice, synth.process());
 
         // The robot is kept about as loud as your voice, whichever robot it is; and when

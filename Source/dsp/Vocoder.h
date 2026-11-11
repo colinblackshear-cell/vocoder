@@ -45,7 +45,12 @@ public:
             followers[(size_t) i].reset();
         }
         sibilanceFilter.reset();
+        sibilanceGain = 0.0f;
     }
+
+    // The "s" and "t" sounds only belong with a robot that's singing: with no notes for it to
+    // play, they'd come out on their own as a whisper of your voice. Open while it has notes.
+    void setSibilanceOpen (bool open) { sibilanceTarget = open ? 1.0f : 0.0f; }
 
     void setSettings (const Settings& s)
     {
@@ -79,6 +84,7 @@ public:
         // Narrower bands pass less energy, so make up the difference.
         makeup = (float) (2.5 * std::sqrt (n / 20.0) * std::sqrt (settings.sharpness));
         sibilanceFilter.setHighPass (sampleRate, 5000.0, 0.707);
+        sibilanceCoef = (float) std::exp (-1.0 / (0.03 * sampleRate));
         configured = true;
     }
 
@@ -92,7 +98,8 @@ public:
             for (auto& f : carFilters[(size_t) i]) c = f.process (c);
             out += c * followers[(size_t) i].process (m);
         }
-        return out * makeup + sibilanceFilter.process (modulator) * settings.sibilance;
+        sibilanceGain = sibilanceTarget + sibilanceCoef * (sibilanceGain - sibilanceTarget);
+        return out * makeup + sibilanceFilter.process (modulator) * settings.sibilance * sibilanceGain;
     }
 
 private:
@@ -100,6 +107,7 @@ private:
     Settings settings;
     bool configured = false;
     float makeup = 1.0f;
+    float sibilanceTarget = 1.0f, sibilanceGain = 1.0f, sibilanceCoef = 0.999f;
     std::array<std::array<Biquad, 2>, maxBands> modFilters {};
     std::array<std::array<Biquad, 2>, maxBands> carFilters {};
     std::array<EnvelopeFollower, maxBands> followers {};
