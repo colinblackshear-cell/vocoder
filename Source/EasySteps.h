@@ -135,6 +135,25 @@ inline const std::vector<Step>& all()
               { "Telephone", "Calling from far away", { { vintageOn, 1 }, { vintageEra, 9 } } },
               { "Megaphone", "Loud and bossy", { { vintageOn, 1 }, { vintageEra, 10 } } },
           } },
+
+        { "Mic",
+          "Sing through a classic studio mic instead of your laptop or phone mic. Set what you're singing into below.",
+          { micOn, micModel },
+          {
+              { "Your mic", "Plain, as it comes in", {} },
+              { "Natural", "Just takes your mic's stock sound out", { { micOn, 1 }, { micModel, 0 } } },
+              { "Studio", "The do-everything studio condenser", { { micOn, 1 }, { micModel, 1 } } },
+              { "Pop Air", "Bright and glossy, modern pop", { { micOn, 1 }, { micModel, 2 } } },
+              { "Pencil", "Flat, detailed, very natural", { { micOn, 1 }, { micModel, 3 } } },
+              { "Golden Tube", "Warm, thick, the 1950s legend", { { micOn, 1 }, { micModel, 4 } } },
+              { "Silk Tube", "Airy top with tube warmth", { { micOn, 1 }, { micModel, 5 } } },
+              { "Velvet Tube", "Darker, kind to harsh voices", { { micOn, 1 }, { micModel, 6 } } },
+              { "Ribbon", "Big round lows, soft top: crooner", { { micOn, 1 }, { micModel, 7 } } },
+              { "Modern Ribbon", "Smooth but open, great close up", { { micOn, 1 }, { micModel, 8 } } },
+              { "Broadcast", "Radio and rap vocal: full, dense", { { micOn, 1 }, { micModel, 9 } } },
+              { "Stage", "Punchy live vocal mic", { { micOn, 1 }, { micModel, 10 } } },
+              { "Bullet", "Old harmonica mic: honk and grit", { { micOn, 1 }, { micModel, 11 } } },
+          } },
     };
     return steps;
 }

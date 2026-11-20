@@ -6,6 +6,7 @@
 #include "dsp/Effects.h"
 #include "dsp/Filter.h"
 #include "dsp/Router.h"
+#include "dsp/MicModel.h"
 #include "dsp/Vintage.h"
 #include "dsp/Vocoder.h"
 #include "Recorder.h"
@@ -117,6 +118,9 @@ private:
     vox::Chorus chorus;
     vox::StereoDelay delay;
     juce::Reverb reverb;
+    vox::MicModel mic;
+    juce::SmoothedValue<float> micMix;
+    vox::MicModel::Settings micSettings;
     vox::Vintage vintage;
     juce::SmoothedValue<float> vintageMix;
     int vintageEra = 3;

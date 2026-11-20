@@ -39,6 +39,9 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state, const char* id, const juc
                                             : juce::String (v, 2);
             return unit.isEmpty() ? text : text + " " + unit;
         };
+        // The Mic locker's knobs read in their own words (cm, %, dB).
+        if (juce::String (id).startsWith ("mic"))
+            slider.textFromValueFunction = [param] (double v) { return param->getText (param->convertTo0to1 ((float) v), 0); };
         slider.updateText();
     }
     slider.setTooltip (tip);
@@ -262,7 +265,16 @@ MainPanel::MainPanel (VocoderProcessor& p)
 
     mix.addKnob (knob (outputGain, "Level", "Output level"));
 
-    for (auto* section : { &voice, &synth, &tune, &arp, &filter, &fx, &vintage, &mix })
+    mic.setOptionsOnTop (true);
+    mic.addOption (choice (micModel, "Mic", "Which classic studio mic style you sing into"));
+    mic.addOption (choice (micSource, "Your mic", "What you're really singing into, so its stock sound is taken out first"));
+    mic.addKnob (knob (micDistance, "Distance", "Close up adds the mic's bass boost; far away thins the lows and adds a little room"));
+    mic.addKnob (knob (micWarmth, "Warmth", "The tube or transformer grit"));
+    mic.addKnob (knob (micAir, "Air", "Sparkle on top. Middle is the mic as it is"));
+    mic.addKnob (knob (micPolish, "Polish", "A light vocal chain: rumble cut, de-esser and a smooth leveler"));
+    mic.addKnob (knob (micAmount, "Amount", "Blend between your plain mic and the chosen mic"));
+
+    for (auto* section : { &mic, &voice, &synth, &tune, &arp, &filter, &fx, &vintage, &mix })
         addAndMakeVisible (section);
 }
 
@@ -282,7 +294,7 @@ void MainPanel::resized()
         for (auto& [s, w] : parts)
             s->setBounds (row.removeFromLeft (juce::roundToInt (w * unit)));
     };
-    lay (top, { { &voice, 3.3f }, { &synth, 4.4f }, { &tune, 4.3f } });
+    lay (top, { { &mic, 5.2f }, { &voice, 2.9f }, { &synth, 4.2f }, { &tune, 4.0f } });
     lay (bottom, { { &arp, 2.0f }, { &filter, 3.6f }, { &fx, 3.6f }, { &vintage, 2.35f }, { &mix, 1.45f } });
 }
 
@@ -314,6 +326,7 @@ ListenBar::ListenBar (VocoderProcessor& p)
         { ParamIDs::arpOn, "Rhythm", "The rhythm gate chops your sound into a beat; the note arp plays the robot's chord", Palette::arp },
         { ParamIDs::fxOn, "Effects", "Echo, reverb, chorus and distortion on everything", Palette::fx },
         { ParamIDs::vintageOn, "Vintage", "Puts everything on an old record, sung into a mic from another decade", Palette::vintage },
+        { ParamIDs::micOn, "Mic", "Your voice through a classic studio mic (tube, ribbon, condenser...), first in the chain", Palette::mic },
     };
     for (int i = 0; i < numParts; ++i)
     {
@@ -516,10 +529,12 @@ void ListenBar::resized()
     rawButton.setBounds (area.removeFromLeft (92));
     area.removeFromLeft (12);
 
-    const int gap = 22;
+    const int gap = 12;
     const int sliderWidth = juce::jlimit (50, 100, (area.getWidth() - numParts * 88 - (numParts - 1) * gap) / 2);
     const int buttonWidth = juce::jmin (100, (area.getWidth() - 2 * sliderWidth - (numParts - 1) * gap) / numParts);
-    for (int i = 0; i < numParts; ++i)
+    // Mic is added last in the list but sits first, where it is in the chain.
+    constexpr int order[numParts] = { 6, 0, 1, 2, 3, 4, 5 };
+    for (int i : order)
     {
         parts[i].button.setBounds (area.removeFromLeft (buttonWidth));
         if (i == 0)

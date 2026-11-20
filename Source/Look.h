@@ -22,6 +22,7 @@ inline const juce::Colour arp { 0xffeab34c };     // rhythm: mustard
 inline const juce::Colour filter { 0xff72aedb };  // chords / filter: sky
 inline const juce::Colour fx { 0xffa9c860 };      // effects: avocado
 inline const juce::Colour vintage { 0xffdcab70 }; // vintage: tan
+inline const juce::Colour mic { 0xffd98fa8 };     // mic locker: dusty rose
 inline const juce::Colour mix { 0xffe6dccb };
 inline const juce::Colour record { 0xffe0503f };
 

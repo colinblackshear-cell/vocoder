@@ -87,7 +87,7 @@ public:
 private:
     Section voice { "VOICE", Palette::voice }, synth { "SYNTH", Palette::synth }, tune { "AUTO-TUNE", Palette::tune },
         arp { "ARP", Palette::arp }, filter { "FILTER", Palette::filter }, fx { "EFFECTS", Palette::fx },
-        vintage { "VINTAGE", Palette::vintage }, mix { "OUTPUT", Palette::mix };
+        vintage { "VINTAGE", Palette::vintage }, mix { "OUTPUT", Palette::mix }, mic { "MIC", Palette::mic };
 };
 
 // One module in the chain bar, drawn as a small unit with a pilot lamp.
@@ -117,7 +117,7 @@ private:
     float needle = 0.0f; // 0..1 across the scale
 };
 
-// Your sound as a chain of modules: Your voice, Auto-Tune, Robot, Rhythm,
+// Your sound as a chain of modules: Mic, Your voice, Auto-Tune, Robot, Rhythm,
 // Effects, Vintage. Each switches on and off on its own, so you can start from your
 // raw voice and add only what you want. Shown in every view.
 class ListenBar : public juce::Component, private juce::Timer
@@ -131,7 +131,7 @@ public:
     std::function<void()> onBackToRaw;
 
 private:
-    static constexpr int numParts = 6;
+    static constexpr int numParts = 7;
     void timerCallback() override;
 
     struct Part

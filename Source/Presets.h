@@ -172,6 +172,24 @@ inline const std::vector<Preset>& all()
           { { voiceOn, 1 }, { robotOn, 0 }, { vintageOn, 1 }, { vintageEra, 8 }, { delayMix, 0.2f }, { delayTime, 3 } } },
         { "Vintage", "Phone Call",
           { { voiceOn, 1 }, { robotOn, 0 }, { vintageOn, 1 }, { vintageEra, 9 } } },
+
+        // Mic: just your voice through a classic studio mic, no robot. Added last too.
+        { "Mic", "Great Mic",
+          { { voiceOn, 1 }, { robotOn, 0 }, { micOn, 1 }, { micModel, 1 } } },
+        { "Mic", "Tube Vocal",
+          { { voiceOn, 1 }, { robotOn, 0 }, { micOn, 1 }, { micModel, 4 }, { micDistance, 0.3f }, { reverbMix, 0.12f },
+            { reverbSize, 0.45f } } },
+        { "Mic", "Pop Shine",
+          { { voiceOn, 1 }, { robotOn, 0 }, { micOn, 1 }, { micModel, 2 }, { micPolish, 0.8f }, { delayMix, 0.12f },
+            { delayTime, 3 }, { reverbMix, 0.18f } } },
+        { "Mic", "Radio Voice",
+          { { voiceOn, 1 }, { robotOn, 0 }, { micOn, 1 }, { micModel, 9 }, { micDistance, 0.2f }, { micPolish, 0.85f } } },
+        { "Mic", "Ribbon Crooner",
+          { { voiceOn, 1 }, { robotOn, 0 }, { micOn, 1 }, { micModel, 7 }, { micDistance, 0.35f }, { reverbMix, 0.25f },
+            { reverbSize, 0.55f } } },
+        { "Mic", "Studio Robot",
+          { { micOn, 1 }, { micModel, 5 }, { waveform, Wave::saw }, { bands, 24 }, { release, 50 }, { chorusMix, 0.2f },
+            { reverbMix, 0.15f } } },
     };
     return presets;
 }
@@ -181,7 +199,7 @@ inline bool keepsValue (const juce::String& id)
 {
     using namespace ParamIDs;
     for (auto* kept : { inputGain, gateThreshold, tempo, metronome, chordTiming, drone, droneNote, outputGain, tuneKey, tuneScale,
-                              chordKey, chordScale, chordFlavour, fillGaps })
+                              chordKey, chordScale, chordFlavour, fillGaps, micSource })
         if (id == kept)
             return true;
     return false;

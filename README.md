@@ -61,15 +61,16 @@ Pick a view at the top right:
 - **Easy** builds a sound one step at a time with big buttons: **1 Voice** (Robot, Daft, Choir, Whisper,
   Monster, Chipmunk, Alien, Retro Game), **2 Chords** (Simple, Dreamy, Jazzy, Floaty, Tense, Sparkly, Rock,
   Huge), **3 Rhythm** (arps and gates), **4 Effects** (Echo, Space, Wide, Wobble, Wah, Crunch: turn on as many
-  as you like), **5 Auto-Tune** and **6 Vintage**. Each step has a few knobs to fine-tune it. Good for kids and quick ideas.
+  as you like), **5 Auto-Tune**, **6 Vintage** and **7 Mic**. Each step has a few knobs to fine-tune it. Good for kids and quick ideas.
 - **Studio** shows the main controls as knobs in coloured sections.
 - **Advanced** shows every setting as a list.
 
 A new Vocoder starts as just your **raw voice**. The **Your sound** bar above the chord buttons shows the
 chain your voice flows through, and each part switches on and off on its own:
 
-**Your voice → Auto-Tune → Robot → Rhythm → Effects → Vintage**
+**Mic → Your voice → Auto-Tune → Robot → Rhythm → Effects → Vintage**
 
+- **Mic** makes your voice sound as if you sang into a classic studio microphone (see below).
 - **Your voice** is your own voice from the mic (auto-tuned when Auto-Tune is on).
 - **Auto-Tune** snaps your voice to the notes of the key.
 - **Robot** is the vocoder: your words, played by the synth on the notes of your chord. It needs notes.
@@ -118,6 +119,35 @@ tone, the grit of tubes or tape, and the record's hiss, crackle and wobble.
 
 **Wear** sets how worn the record is (hiss, crackle, hum and wobble; 0 is a brand new record) and **Amount**
 blends the old sound with today's. Vintage comes last, so the reverb and echo go onto the record too.
+
+## Mic
+
+The Mic locker comes first in the chain, so everything after it hears the new mic. With the Robot off it's
+simply a great vocal sound. Set **Your mic** to what you're really singing into (Mac built-in, iPhone,
+AirPods / headset, USB mic, or a pro mic through an interface) and its stock sound is taken out first. Then
+pick a **Mic**:
+
+| Mic | Family | Sounds like |
+| --- | --- | --- |
+| Natural | Clean | Only removes your mic's stock sound |
+| Studio Standard | Clean | The do-everything studio condenser: even, clear, a touch of presence |
+| Pop Air | Clean | Bright, glossy top for modern pop and R&B |
+| Pencil Clean | Clean | Small diaphragm: flat, detailed, very natural |
+| Golden Tube | Vintage tube | Warm and thick, smooth top, tube bloom |
+| Silk Tube | Vintage tube | Open, airy top with tube warmth |
+| Velvet Tube | Vintage tube | Darker and forgiving, rich lows |
+| Classic Ribbon | Ribbon | Big round lows, soft dark top |
+| Modern Ribbon | Ribbon | Smooth but more open, great close up |
+| Broadcast | Dynamic | Radio, podcast and rap vocal: full, dense, tamed highs |
+| Stage | Dynamic | The live vocal workhorse: punchy mids |
+| Bullet | Dynamic | Old harmonica mic: mid honk and grit |
+
+**Distance** adds the bass boost you get up close, or thins the lows and adds a little room when far.
+**Warmth** turns the tube or transformer grit up. **Air** adds or takes away sparkle. **Polish** is a light
+vocal chain (rumble cut, de-esser, smooth leveler). **Amount** blends with your plain mic. The Mic keeps your
+level about the same, so switching mics changes the tone, not the volume. It can't add detail a cheap mic
+never picked up, so a USB or interface mic gets closest. The Mic presets (Great Mic, Tube Vocal, Pop Shine,
+Radio Voice, Ribbon Crooner, Studio Robot) are at the end of the Sound menu.
 
 ## Sounds (presets)
 

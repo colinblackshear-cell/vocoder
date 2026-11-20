@@ -5,6 +5,7 @@
 #include "../Source/dsp/CarrierSynth.h"
 #include "../Source/dsp/Effects.h"
 #include "../Source/dsp/Filter.h"
+#include "../Source/dsp/MicModel.h"
 #include "../Source/dsp/Router.h"
 #include "../Source/dsp/Vintage.h"
 #include "../Source/dsp/Vocoder.h"
@@ -679,6 +680,90 @@ void testRouter()
     }
 }
 
+void testMic()
+{
+    const double sr = 48000.0;
+    // Runs 2 s of the same noise through a mic and returns the energy in a band
+    // (lowHz..highHz, measured with a simple band filter) of the input and the output.
+    struct Result { float level, lows, highs; bool finite; };
+    auto run = [sr] (vox::MicModel::Settings s)
+    {
+        vox::MicModel mic;
+        mic.prepare (sr);
+        mic.set (s);
+        vox::Biquad lowBand, highBand;
+        lowBand.setLowPass (sr, 200.0, 0.707);
+        highBand.setHighPass (sr, 8000.0, 0.707);
+        uint32_t seed = 1;
+        double in = 0, out = 0, lows = 0, highs = 0;
+        bool finite = true;
+        for (int i = 0; i < (int) (2 * sr); ++i)
+        {
+            seed = seed * 1664525u + 1013904223u;
+            const float x = ((float) (seed >> 8) / 16777216.0f - 0.5f) * 0.3f;
+            float left = x, right = x;
+            mic.process (left, right);
+            finite = finite && std::isfinite (left) && std::isfinite (right);
+            const float l = lowBand.process (left), h = highBand.process (left);
+            if (i > (int) sr)
+            {
+                in += x * x;
+                out += left * left;
+                lows += l * l;
+                highs += h * h;
+            }
+        }
+        return Result { (float) (10.0 * std::log10 (out / in)), (float) lows, (float) highs, finite };
+    };
+
+    bool allFinite = true, allLevel = true;
+    for (int m = 0; m < vox::MicModel::numMics; ++m)
+        for (int source = 0; source < vox::MicModel::numSources; ++source)
+        {
+            vox::MicModel::Settings s;
+            s.mic = m;
+            s.source = source;
+            const auto r = run (s);
+            allFinite = allFinite && r.finite;
+            allLevel = allLevel && std::abs (r.level) < 1.5f;
+        }
+    check (allFinite, "mic: every mic and source stays finite");
+    check (allLevel, "mic: every mic keeps about the same loudness (tone, not level)");
+
+    vox::MicModel::Settings ribbon, pop;
+    ribbon.mic = 7; // Classic Ribbon
+    pop.mic = 2;    // Pop Air
+    check (run (ribbon).highs < run (pop).highs * 0.5f, "mic: Classic Ribbon is much darker than Pop Air");
+
+    vox::MicModel::Settings close, far;
+    close.distance = 0.0f;
+    far.distance = 1.0f;
+    close.polish = far.polish = 0.0f;
+    check (run (close).lows > run (far).lows * 1.5f, "mic: singing close adds bass (proximity)");
+
+    vox::MicModel::Settings laptop, pro;
+    laptop.source = 0;
+    pro.source = 4;
+    laptop.polish = pro.polish = 0.0f;
+    check (run (laptop).lows > run (pro).lows * 1.2f, "mic: Mac built-in source puts back the missing lows");
+
+    {
+        vox::MicModel mic;
+        mic.prepare (sr);
+        vox::MicModel::Settings s;
+        s.mic = 4;
+        s.amount = 0.0f;
+        mic.set (s);
+        bool same = true;
+        for (int i = 0; i < 4800; ++i)
+        {
+            const float x = std::sin ((float) i * 0.05f) * 0.5f;
+            same = same && std::abs (mic.process (x) - x) < 1.0e-9f;
+        }
+        check (same, "mic: Amount 0 passes the voice through untouched");
+    }
+}
+
 int main()
 {
     testBandPass();
@@ -693,6 +778,7 @@ int main()
     testChords();
     testVintage();
     testRouter();
+    testMic();
     std::printf ("\n%s\n", failures == 0 ? "All tests passed" : "Some tests failed");
     return failures == 0 ? 0 : 1;
 }
