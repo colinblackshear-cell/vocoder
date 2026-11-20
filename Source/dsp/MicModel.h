@@ -92,6 +92,20 @@ public:
         { "Pro mic / interface", 0, 0, { 0, 0, 1 }, 0, 0 },
     };
 
+    // Names short enough for a pedal's little window.
+    static const char* shortMicName (int i)
+    {
+        static const char* const names[numMics] = { "Natural", "Studio", "Pop Air", "Pencil", "Golden", "Silk",
+                                                    "Velvet", "Ribbon", "Modern", "Radio", "Stage", "Bullet" };
+        return names[std::clamp (i, 0, numMics - 1)];
+    }
+
+    static const char* shortSourceName (int i)
+    {
+        static const char* const names[numSources] = { "Mac", "iPhone", "Headset", "USB mic", "Pro mic" };
+        return names[std::clamp (i, 0, numSources - 1)];
+    }
+
     static const char* familyName (Family f)
     {
         switch (f)
