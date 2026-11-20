@@ -63,6 +63,8 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     reverb.setSampleRate (sampleRate);
     reverb.reset();
     vintage.prepare (sampleRate);
+    mic.prepare (sampleRate);
+    micMix.reset (sampleRate, 0.03);
     vintageMix.reset (sampleRate, 0.03);
     clickDecay = (float) std::exp (-1.0 / (0.015 * sampleRate));
 
@@ -83,6 +85,7 @@ void VocoderProcessor::prepareToPlay (double newSampleRate, int)
     resonance.setCurrentAndTargetValue (resonance.getTargetValue());
     cutoff.setCurrentAndTargetValue (cutoff.getTargetValue());
     vintageMix.setCurrentAndTargetValue (vintageMix.getTargetValue());
+    micMix.setCurrentAndTargetValue (micMix.getTargetValue());
 }
 
 VocoderProcessor::Timing VocoderProcessor::readTiming()
@@ -234,6 +237,14 @@ void VocoderProcessor::updateSettings (const Timing& timing)
     vintageMix.setTargetValue (raw (params, ParamIDs::vintageOn) > 0.5f ? raw (params, ParamIDs::vintageAmount) : 0.0f);
     vintageEra = index (params, ParamIDs::vintageEra);
     vintageWear = raw (params, ParamIDs::vintageWear);
+
+    micMix.setTargetValue (raw (params, ParamIDs::micOn) > 0.5f ? raw (params, ParamIDs::micAmount) : 0.0f);
+    micSettings.mic = index (params, ParamIDs::micModel);
+    micSettings.source = index (params, ParamIDs::micSource);
+    micSettings.distance = raw (params, ParamIDs::micDistance);
+    micSettings.warmth = raw (params, ParamIDs::micWarmth);
+    micSettings.air = raw (params, ParamIDs::micAir);
+    micSettings.polish = raw (params, ParamIDs::micPolish);
 }
 
 void VocoderProcessor::handleMidi (const juce::MidiMessage& message)
@@ -454,6 +465,14 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             voice += sideIn.getSample (ch, i) * sideScale;
 
         voice = gate.process (voice * inputGain.getNextValue());
+
+        // First in the chain: the Mic locker, so everything after hears the new mic.
+        if (micMix.isSmoothing() || micMix.getTargetValue() > 0.0f)
+        {
+            micSettings.amount = micMix.getNextValue();
+            mic.set (micSettings);
+            voice = mic.process (voice);
+        }
         if (tuning)
             voice = autoTune.process (voice);
 
@@ -463,7 +482,7 @@ void VocoderProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
             updateSungNotes (singMode);
         }
 
-        // The chain, always in this order: your voice -> auto-tune (above) -> robot ->
+        // The chain, always in this order: your voice -> mic -> auto-tune (above) -> robot ->
         // rhythm -> effects -> vintage. Each part only changes the sound when it's switched on.
         const float arpGain = arp.process (synth);
         vocoder.setSibilanceOpen (arp.hasNotes() || drone || singMode != 0);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dsp/MicModel.h"
 #include "dsp/Vintage.h"
 
 #include <juce_audio_processors/juce_audio_processors.h>
@@ -93,6 +94,16 @@ inline constexpr auto robotLevel = "robotLevel";
 inline constexpr auto voiceLevel = "voiceLevel";
 inline constexpr auto outputGain = "outputGain";
 inline constexpr auto fillGaps = "fillGaps";
+
+// The Mic locker: first in the chain.
+inline constexpr auto micOn = "micOn";
+inline constexpr auto micModel = "micModel";
+inline constexpr auto micSource = "micSource";
+inline constexpr auto micDistance = "micDistance";
+inline constexpr auto micWarmth = "micWarmth";
+inline constexpr auto micAir = "micAir";
+inline constexpr auto micPolish = "micPolish";
+inline constexpr auto micAmount = "micAmount";
 } // namespace ParamIDs
 
 // Musical note lengths, in beats, shared by the arp rate, LFO sync and delay time.
@@ -116,6 +127,27 @@ inline const juce::StringArray flavours { "Simple", "Seventh", "Ninth", "Sus2", 
 // The matching auto-tune scale for each chord scale.
 inline constexpr int tuneScales[] = { 1, 2, 6, 7, 8, 9, 10 };
 } // namespace ChordNames
+
+// How the Mic locker's knobs read.
+namespace MicText
+{
+// 0 = lips on the grille, 0.5 = a normal singing distance (about 15 cm), 1 = across the room.
+inline juce::String distance (float v)
+{
+    if (v < 0.05f)
+        return "On the grille";
+    if (v > 0.95f)
+        return "Across the room";
+    const float cm = v <= 0.5f ? 1.0f + v * 28.0f : 15.0f * std::pow (10.0f, (v - 0.5f) * 2.4f);
+    return cm < 100.0f ? juce::String (juce::roundToInt (cm)) + " cm" : juce::String (cm / 100.0f, 1) + " m";
+}
+inline juce::String percent (float v) { return juce::String (juce::roundToInt (v * 100.0f)) + "%"; }
+inline juce::String air (float v)
+{
+    const float db = (v - 0.5f) * 12.0f;
+    return (db > 0.05f ? "+" : "") + juce::String (db, 1) + " dB";
+}
+} // namespace MicText
 
 inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout()
 {
@@ -145,6 +177,14 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
     auto toggle = [] (const char* id, const char* name, bool def)
     {
         return std::make_unique<AudioParameterBool> (ParameterID { id, 1 }, name, def);
+    };
+
+    // A 0..1 knob shown in words that mean something (cm, %, dB).
+    auto shown = [] (const char* id, const char* name, float def, juce::String (*text) (float))
+    {
+        return std::make_unique<AudioParameterFloat> (ParameterID { id, 1 }, name, NormalisableRange<float> (0.0f, 1.0f, 0.01f), def,
+                                                      AudioParameterFloatAttributes().withStringFromValueFunction (
+                                                          [text] (float v, int) { return text (v); }));
     };
 
     AudioProcessorValueTreeState::ParameterLayout layout;
@@ -265,6 +305,23 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         real (ParamIDs::outputGain, "Output Gain", { -24.0f, 12.0f, 0.1f }, 0.0f, "dB"),
         // When the robot is on but has no notes to play, your voice fills in instead of silence.
         toggle (ParamIDs::fillGaps, "Voice Fills Gaps", true)));
+
+    // Added last so the earlier parameters keep their places.
+    juce::StringArray micNames, sourceNames;
+    for (const auto& mic : vox::MicModel::mics)
+        micNames.add (mic.name);
+    for (const auto& source : vox::MicModel::sources)
+        sourceNames.add (source.name);
+    layout.add (std::make_unique<Group> (
+        "mic", "Mic", "|",
+        toggle (ParamIDs::micOn, "Mic On", false),
+        choice (ParamIDs::micModel, "Mic", micNames, 1),
+        choice (ParamIDs::micSource, "Your Mic", sourceNames, 0),
+        shown (ParamIDs::micDistance, "Mic Distance", 0.4f, MicText::distance),
+        shown (ParamIDs::micWarmth, "Mic Warmth", 0.5f, MicText::percent),
+        shown (ParamIDs::micAir, "Mic Air", 0.5f, MicText::air),
+        shown (ParamIDs::micPolish, "Mic Polish", 0.6f, MicText::percent),
+        shown (ParamIDs::micAmount, "Mic Amount", 1.0f, MicText::percent)));
 
     return layout;
 }

@@ -2,7 +2,7 @@
 
 namespace
 {
-const juce::Colour stepColours[] = { Palette::voice, Palette::filter, Palette::arp, Palette::fx, Palette::tune, Palette::vintage };
+const juce::Colour stepColours[] = { Palette::voice, Palette::filter, Palette::arp, Palette::fx, Palette::tune, Palette::vintage, Palette::mic };
 } // namespace
 
 //==============================================================================
@@ -147,10 +147,17 @@ void EasyPanel::buildStep()
             knob (voiceLevel, "Your voice", "How loud your own tuned voice is");
             knob (robotLevel, "Robot", "How loud the robot is");
             break;
-        default:
+        case 5:
             knob (vintageWear, "Wear", "How worn the record is: hiss, crackle and wobble");
             knob (vintageAmount, "Amount", "Blend between today's sound and the old record");
             knob (voiceLevel, "Your voice", "How loud your own voice is");
+            break;
+        default:
+            extras.push_back (std::make_unique<Choice> (state, micSource, "Your mic", "What you're really singing into, so its stock sound is taken out first"));
+            knob (micDistance, "Distance", "Close up adds bass; far away adds a little room");
+            knob (micWarmth, "Warmth", "Tube and transformer grit");
+            knob (micAir, "Air", "Sparkle on top");
+            knob (micPolish, "Polish", "Rumble cut, de-esser and a smooth leveler");
             break;
     }
     for (auto& e : extras)
