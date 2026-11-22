@@ -34,7 +34,8 @@ public:
         float pos = (float) writeIndex - delay;
         if (pos < 0.0f)
             pos += (float) size;
-        const int i0 = (int) pos;
+        // A tiny negative pos plus size rounds up to exactly size in float: keep the index inside the buffer.
+        const int i0 = std::min ((int) pos, size - 1);
         const int i1 = (i0 + 1) % size;
         const float t = pos - (float) i0;
         return buffer[(size_t) i0] + t * (buffer[(size_t) i1] - buffer[(size_t) i0]);
